@@ -35,13 +35,11 @@ puntos_iniciales = {
     "jugador_1": (ancho * 0.380, alto * 0.695),
     "jugador_2": (ancho * 0.815, alto * 0.5),
     "jugador_3": (ancho * 0.620, alto * 0.305),
-    "jugador_4": (ancho * 0.20, alto * 0.5),
+    "jugador_4": (ancho * 0.185, alto * 0.5),
 }
 
 dc=1.15 # Distancia cartas
 db=0.2 # Distancia borde
-
-dcl=dc+0.1
 dbl=db+0.1
 
 # Desplazamientos relativos personalizados para cada jugador
@@ -71,12 +69,12 @@ desplazamientos_por_jugador = {
         "reserva_4 J3": (-dc*4,-db),
     },
     "jugador_4": {
-        "comodines J4": (-0.2, 1.2),
-        "mazo_jugador J4": (0, 0),
-        "reserva_1 J4": (-0.2, -1.2),
-        "reserva_2 J4": (-0.2, -2.4),
-        "reserva_3 J4": (-0.2, -3.6),
-        "reserva_4 J4": (-0.2, -4.8),
+        "comodines J4": (-dbl, -2.15),
+        "mazo_jugador J4": (0, -1.3),
+        "reserva_1 J4": (-dbl, -0.45),
+        "reserva_2 J4": (-dbl, 0.4),
+        "reserva_3 J4": (-dbl, 1.25),
+        "reserva_4 J4": (-dbl, 2.1),
     },
 }
 
