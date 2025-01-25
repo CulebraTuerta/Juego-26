@@ -14,8 +14,6 @@ pygame.display.set_caption("Juego 26 - CulebraTuerta")
 #--------------------------------------------#
 ###### Seteo de Tablero General
 
-posicion_mazo_central = (ancho * 0.5, alto * 0.5)
-
 # Configurar colores y fuente
 color_fondo = (34, 139, 34)  # Verde oscuro para el fondo
 color_bordes = (255, 255, 255)
@@ -56,16 +54,15 @@ reverso_carta_rojo = pygame.transform.scale(reverso_carta_rojo, tamano_carta)
 
 # Clase Carta
 class Carta:
-    def __init__(self, descripcion, cara, reverso, posicion):
+    def __init__(self, descripcion, cara, reverso):
         self.descripcion = descripcion
         self.cara = cara
         self.reverso = reverso
-        self.posicion = posicion
         self.mostrando_cara = False  # Comienza mostrando el reverso
         self.rect = self.reverso.get_rect()  # Usaremos el rectángulo del reverso para la detección de clics
 
-    def dibujar(self, pantalla, girar=False):
-        x, y = self.posicion
+    def dibujar(self, pantalla, posicion, girar=False):
+        x, y = posicion
         if self.mostrando_cara:
             imagen = self.cara
         else:
@@ -74,17 +71,11 @@ class Carta:
         if girar:
             imagen = pygame.transform.rotate(imagen, 90)
 
-        # Actualizar el rectángulo de la carta
-        self.rect = imagen.get_rect(center=(x, y))
-
-        # Dibujar la carta
-        pantalla.blit(imagen, self.rect.topleft)
+        pantalla.blit(imagen, (x - imagen.get_width() // 2, y - imagen.get_height() // 2))
 
     def contiene_punto(self, punto):
-    
-        self.rect.center = self.posicion  # Asegúrate de actualizar la posición del rectángulo
+        """Verifica si un punto (x, y) está dentro del rectángulo de la carta."""
         return self.rect.collidepoint(punto)
-
 
 #--------------------------------------------#
 ###### DEFINICIONES
@@ -138,14 +129,14 @@ def crear_mazo_completo(tamano_carta):
                     imagen_cara = pygame.image.load(ruta_carta_cara)
                     imagen_cara = pygame.transform.scale(imagen_cara, tamano_carta)
                     reverso = reverso_carta_rojo if palo in ["c", "d"] else reverso_carta_azul
-                    mazo.append(Carta(f"{palo}{valor}", imagen_cara, reverso,posicion_mazo_central))
+                    mazo.append(Carta(f"{palo}{valor}", imagen_cara, reverso))
             # Agregar Jokers
             for color, reverso in [("R", reverso_carta_rojo), ("N", reverso_carta_azul)]:
                 for _ in range(1):  # Dos Jokers, uno de cada color
                     ruta_joker = f"Cartas/Joker{color}.png"
                     imagen_joker = pygame.image.load(ruta_joker)
                     imagen_joker = pygame.transform.scale(imagen_joker, tamano_carta)
-                    mazo.append(Carta(f"Joker {color}", imagen_joker, reverso,posicion_mazo_central))
+                    mazo.append(Carta(f"Joker {color}", imagen_joker, reverso))
     except pygame.error as e:
         print(f"Error al cargar una carta: {e}")
         sys.exit()
@@ -158,17 +149,6 @@ random.shuffle(mazo_central)
 
 # Definir posición del mazo central
 posicion_mazo_central = (ancho * 0.5, alto * 0.5)
-
-def dibujar_mazo_central(pantalla, mazo, posicion):
-    """
-    Dibuja las cartas del mazo central apiladas en la posición indicada.
-    """
-    x_centro, y_centro = posicion
-    for i, carta in enumerate(mazo):
-        # Pequeño desplazamiento para simular apilado
-        offset = i * 0.1  
-        pantalla.blit(carta.reverso, (x_centro - tamano_carta[0] // 2, y_centro - tamano_carta[1] // 2 - offset))
-
 
 # Definir posición del mazos centrales secundarios
 posiciones_mazos_secundarios = {
@@ -266,11 +246,11 @@ def dibujar_cartas_jugador(pantalla, mazo_jugador, posicion, tamano_carta, girar
     La última carta se muestra mirando hacia arriba.
     """
     x_centro, y_centro = posicion
-    for i, carta in enumerate(mazo_jugador):
+    for i, (_, cara, reverso) in enumerate(mazo_jugador):
         offset = i * 0.1  # Desplazamiento para simular apilado
 
         # Usar cara para la última carta, reverso para el resto
-        imagen_dibujar = carta.cara if i == len(mazo_jugador) - 1 else carta.reverso
+        imagen_dibujar = cara if i == len(mazo_jugador) - 1 else reverso
 
         if girar:
             imagen_dibujar = pygame.transform.rotate(imagen_dibujar, 90)
@@ -291,49 +271,36 @@ while True:
         if evento.type == pygame.QUIT:
             pygame.quit()
             sys.exit()
-
+        
         elif evento.type == pygame.MOUSEBUTTONDOWN:
             posicion_mouse = pygame.mouse.get_pos()
 
             if boton_repartir_rect and boton_repartir_rect.collidepoint(evento.pos):
                 repartir_cartas(mazo_central, mazos_jugadores, jugadores_disponibles)
-
+            
             elif not carta_seleccionada:
-                # Verificar clic en las cartas del mazo central
-                for carta in reversed(mazo_central):
+                for carta in mazo_central:
                     if carta.contiene_punto(posicion_mouse):
                         carta_seleccionada = carta
-                        break
-
-                # Verificar clic en las cartas de los jugadores
-                if not carta_seleccionada:
-                    for jugador, cartas in mazos_jugadores.items():
-                        for carta in reversed(cartas):  # Iterar en orden inverso
-                            if carta.contiene_punto(posicion_mouse):
-                                carta_seleccionada = carta
-                                break
-                        if carta_seleccionada:
-                            break
+                        break            
 
         elif evento.type == pygame.MOUSEBUTTONUP:
             if carta_seleccionada:
-                # Coloca la carta en la posición actual del mouse
-                carta_seleccionada.posicion = pygame.mouse.get_pos()
+                # Soltar carta en la posición actual del mouse
+                carta_seleccionada.rect.center = pygame.mouse.get_pos()
                 carta_seleccionada = None
-
         elif evento.type == pygame.MOUSEMOTION:
             if carta_seleccionada:
-                # Mueve la carta con el mouse
-                carta_seleccionada.posicion = pygame.mouse.get_pos()
-
+                carta_seleccionada.rect.center = pygame.mouse.get_pos() 
 
     # Rellenar la pantalla con el color de fondo
     pantalla.fill(color_fondo)
 
     # Dibujar el mazo central
-    dibujar_mazo_central(pantalla, mazo_central, posicion_mazo_central)
+    for carta in mazo_central:
+        carta.dibujar(pantalla, carta.rect.center)
 
-    # Dibujar el borde del mazo central
+    # Dibujar el mazo central bordes
     dibujar_espacio(pantalla, "Mazo Central", posicion_mazo_central, tamano_carta, color_bordes, fuente)
 
     # Mostrar el contador de cartas del mazo central
@@ -357,29 +324,12 @@ while True:
         posicion = tableros[jugador]["mazo_jugador " + jugador[-1]]
         dibujar_contador_cartas(pantalla, cantidad, (posicion[0], posicion[1] + tamano_carta[1] // 2 + 10),fuente, color_bordes)
 
-    for carta in mazo_central:
-        carta.dibujar(pantalla)
-
     # Dibujar las cartas de los jugadores
     for jugador, cartas in mazos_jugadores.items():
         if cartas:  # Asegúrate de que haya cartas en el mazo del jugador
-            # Obtener posición base del mazo del jugador
-            posicion_base = tableros[jugador]["mazo_jugador " + jugador[-1]]
+            posicion = tableros[jugador]["mazo_jugador " + jugador[-1]]  # Obtener posición del mazo del jugador
             girar = jugador in ["jugador_2", "jugador_4"]  # Determina si las cartas deben girarse
-
-            for i, carta in enumerate(cartas):
-                # Calcular el desplazamiento vertical para simular apilado
-                offset = i * 0.1  # Usa un desplazamiento visible
-                posicion_carta = (posicion_base[0], posicion_base[1] - offset)
-
-                # Actualizar la posición de la carta
-                carta.posicion = posicion_carta
-
-                # Configurar que solo la última carta muestre la cara superior
-                carta.mostrando_cara = (i == len(cartas) - 1)
-
-                # Dibujar la carta
-                carta.dibujar(pantalla, girar=girar)
+            dibujar_cartas_jugador(pantalla, cartas, posicion, tamano_carta, girar=girar, jugador=jugador)
 
     # Actualizar la pantalla
     pygame.display.flip()

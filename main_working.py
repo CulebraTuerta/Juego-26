@@ -24,12 +24,6 @@ except pygame.error as e:
     print(f"Error al cargar la imagen de las cartas: {e}")
     sys.exit()
 
-# Crear el mazo central con dos mazos de 54 cartas cada uno (incluyendo Jokers)
-mazo_central = [("rojo", reverso_carta_azul) for _ in range(54)] + [("azul", reverso_carta_rojo) for _ in range(54)]
-
-# Mezclar el mazo central
-random.shuffle(mazo_central)
-
 # Configurar colores y fuente
 color_fondo = (34, 139, 34)  # Verde oscuro para el fondo
 color_bordes = (255, 255, 255)
@@ -136,9 +130,9 @@ def dibujar_mazo_central(pantalla, mazo, posicion):
     Dibuja las cartas del mazo central apiladas en la posición indicada.
     """
     x_centro, y_centro = posicion
-    for i, (_, imagen) in enumerate(mazo):
+    for i, (_, _, reverso) in enumerate(mazo):  # Utilizar el reverso de las cartas
         offset = i * 0.1  # Pequeño desplazamiento para simular apilado
-        pantalla.blit(imagen, (x_centro - tamano_carta[0] // 2, y_centro - tamano_carta[1] // 2 - offset))
+        pantalla.blit(reverso, (x_centro - tamano_carta[0] // 2, y_centro - tamano_carta[1] // 2 - offset))
 
 def dibujar_boton_repartir(pantalla, texto, pos, tamano, color, color_texto, fuente):
     """
@@ -151,44 +145,65 @@ def dibujar_boton_repartir(pantalla, texto, pos, tamano, color, color_texto, fue
     pantalla.blit(texto_boton,(x + (ancho - texto_boton.get_width()) // 2, y + (alto - texto_boton.get_height()) // 2))
     return pygame.Rect(x, y, ancho, alto)  # Devuelve el rectángulo del botón para la detección de clics
 
+def crear_mazo_completo(tamano_carta):
+    """
+    Crea un mazo con dos juegos completos de cartas y sus caras y reversos correspondientes.
+    """
+    palos = ["c", "d", "t", "p"]  # Corazones, Diamantes, Tréboles, Picas
+    valores = ["a"] + [str(n) for n in range(2, 11)] + ["j", "q", "k"]
+    mazo = []
 
-def repartir_cartas(mazo_central, mazos_jugadores, jugadores_disponibles):
-    """
-    Reparte 20 cartas a cada jugador disponible del mazo central.
-    """
-    for jugador in jugadores_disponibles:
-        mazo_jugador = mazos_jugadores[jugador]
-        if len(mazo_central) >= 20:  # Verifica que haya suficientes cartas
-            for _ in range(20):
-                mazo_jugador.append(mazo_central.pop())  # Toma una carta del mazo central
+    try:
+        for _ in range(2):  # Crear dos mazos completos
+            for palo in palos:
+                for valor in valores:
+                    # Cargar la imagen de la cara de la carta
+                    ruta_carta_cara = f"Cartas/{palo}{valor}.png"
+                    imagen_cara = pygame.image.load(ruta_carta_cara)
+                    imagen_cara = pygame.transform.scale(imagen_cara, tamano_carta)
+
+                    # Cargar la imagen del reverso (diferentes colores según el mazo) (igual esta poniendo solo los corazones y diamantes con reverso azul, todo el resto lo asume como rojo, lo que esta mal pero visualmente esta bien)
+                    reverso = reverso_carta_rojo if palo in ["c", "d"] else reverso_carta_azul
+
+                    # Agregar la carta al mazo
+                    mazo.append((f"{palo}{valor}", imagen_cara, reverso))
+
+            # Agregar Jokers al mazo
+            for color, reverso in [("R", reverso_carta_rojo), ("N", reverso_carta_azul)]:
+                for _ in range(1):  # Dos Jokers, uno de cada color. 
+                    ruta_joker = f"Cartas/Joker{color}.png"
+                    try:
+                        imagen_joker = pygame.image.load(ruta_joker)
+                        imagen_joker = pygame.transform.scale(imagen_joker, tamano_carta)
+                        mazo.append((f"Joker {color}", imagen_joker, reverso))
+                    except pygame.error as e:
+                        print(f"Error al cargar el Joker {color}: {e}")
+                        sys.exit()
+    except pygame.error as e:
+        print(f"Error al cargar una carta: {e}")
+        sys.exit()
+
+    return mazo
 
 def dibujar_cartas_jugador(pantalla, mazo_jugador, posicion, tamano_carta, girar=False, jugador=None):
     """
     Dibuja las cartas de un jugador apiladas en su posición.
-    Si `girar` es True, rota las cartas 90 grados y ajusta la posición.
-    El jugador determina si hay un offset especial (e.g., J2, J4).
+    La última carta se muestra mirando hacia arriba.
     """
     x_centro, y_centro = posicion
-    for i, (_, imagen) in enumerate(mazo_jugador):
+    for i, (_, cara, reverso) in enumerate(mazo_jugador):
         offset = i * 0.1  # Desplazamiento para simular apilado
 
-        if girar:
-            # Rotar la carta y ajustar las coordenadas
-            imagen_dibujar = pygame.transform.rotate(imagen, 90)
-            nuevo_ancho, nuevo_alto = tamano_carta[1], tamano_carta[0]  # Intercambiar ancho y alto
-            
-            # Aplicar offset adicional para jugadores 2 y 4
-            if jugador == "jugador_2":
-                x_offset = -offset  # Desplazamiento horizontal positivo
-            elif jugador == "jugador_4":
-                x_offset = offset  # Desplazamiento horizontal negativo
-            else:
-                x_offset = 0  # Sin desplazamiento adicional
+        # Usar cara para la última carta, reverso para el resto
+        imagen_dibujar = cara if i == len(mazo_jugador) - 1 else reverso
 
-            pantalla.blit(imagen_dibujar,(x_centro - nuevo_ancho // 2 + x_offset, y_centro - nuevo_alto // 2))
+        if girar:
+            imagen_dibujar = pygame.transform.rotate(imagen_dibujar, 90)
+            nuevo_ancho, nuevo_alto = tamano_carta[1], tamano_carta[0]
+            x_offset = -offset if jugador == "jugador_2" else offset if jugador == "jugador_4" else 0
+            pantalla.blit(imagen_dibujar, (x_centro - nuevo_ancho // 2 + x_offset, y_centro - nuevo_alto // 2))
         else:
-            # Dibujar sin rotación
-            pantalla.blit(imagen, (x_centro - tamano_carta[0] // 2, y_centro - tamano_carta[1] // 2 - offset))
+            pantalla.blit(imagen_dibujar, (x_centro - tamano_carta[0] // 2, y_centro - tamano_carta[1] // 2 - offset))
 
 def dibujar_contador_cartas(pantalla, cantidad, posicion, fuente, color):
     """
@@ -198,6 +213,21 @@ def dibujar_contador_cartas(pantalla, cantidad, posicion, fuente, color):
     x, y = posicion
     pantalla.blit(texto, (x - texto.get_width() // 2, y - texto.get_height() // 2))
 
+def repartir_cartas(mazo_central, mazos_jugadores, jugadores_disponibles):
+    """
+    Reparte 20 cartas a cada jugador disponible del mazo central.
+    """
+    for jugador in jugadores_disponibles:
+        mazo_jugador = mazos_jugadores[jugador]
+        if len(mazo_central) >= 20:  # Verifica que haya suficientes cartas
+            # Extrae 20 cartas del mazo central para este jugador
+            for _ in range(20):
+                carta = mazo_central.pop()  # Extraer toda la información de la carta
+                mazo_jugador.append(carta)  # Agregar la carta completa al mazo del jugador
+
+# Crear y mezclar el mazo central
+mazo_central = crear_mazo_completo(tamano_carta)
+random.shuffle(mazo_central)
 
 # Posición y tamaño del botón
 pos_boton_repartir = (ancho * 0.5, alto * 0.05)
@@ -251,9 +281,10 @@ while True:
 
     # Dibujar las cartas de los jugadores
     for jugador, cartas in mazos_jugadores.items():
-        posicion = tableros[jugador]["mazo_jugador " + jugador[-1]]  # Obtener posición del mazo del jugador
-        girar = jugador in ["jugador_2", "jugador_4"]  # Determina si las cartas deben girarse
-        dibujar_cartas_jugador(pantalla, cartas, posicion, tamano_carta, girar=girar, jugador=jugador)
+        if cartas:  # Asegúrate de que haya cartas en el mazo del jugador
+            posicion = tableros[jugador]["mazo_jugador " + jugador[-1]]  # Obtener posición del mazo del jugador
+            girar = jugador in ["jugador_2", "jugador_4"]  # Determina si las cartas deben girarse
+            dibujar_cartas_jugador(pantalla, cartas, posicion, tamano_carta, girar=girar, jugador=jugador)
 
     # Actualizar la pantalla
     pygame.display.flip()
