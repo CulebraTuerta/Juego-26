@@ -10,6 +10,7 @@ TagManager:
   - CComodin
   - CMazo
   - carta
+  - padre
   layers:
   - Default
   - TransparentFX

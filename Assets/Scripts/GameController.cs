@@ -117,6 +117,7 @@ public class GameController : MonoBehaviour
             cartita.name = carta; //asi toma el nombre del string carta in mazocentral
             cartita.tag = "carta";
             cartita.GetComponent<Seleccionable>().faceUp = false;
+            cartita.GetComponent<Seleccionable>().setPadre("CMazoCentral");
             zOffset = zOffset + 0.03f;
         }
         zOffset = 0.03f; //vuelvo a poner el offset de z en el inicial.
@@ -130,6 +131,7 @@ public class GameController : MonoBehaviour
                 GameObject cartita = Instantiate(PrefabCarta, new Vector3(mazosJugadoresPos[i].transform.position.x, mazosJugadoresPos[i].transform.position.y, mazosJugadoresPos[i].transform.position.z - zOffset), Quaternion.identity); //en este caso el transform position es del GO del juego26
                 cartita.name = carta; //asi toma el nombre del string carta in mazojugador[i]
                 cartita.tag = "carta";
+                cartita.GetComponent<Seleccionable>().setPadre("CMazo");
                 if (contador==mazosJugadores[i].Count)
                 {
                     cartita.GetComponent<Seleccionable>().faceUp = true;
@@ -146,6 +148,7 @@ public class GameController : MonoBehaviour
                 GameObject cartita = Instantiate(PrefabCarta, new Vector3(manosPos[i][j].transform.position.x, manosPos[i][j].transform.position.y, manosPos[i][j].transform.position.z - zOffset), Quaternion.identity); //en este caso el transform position es del GO del juego26
                 cartita.name = carta; //asi toma el nombre del string carta in mazojugador[i]
                 cartita.tag = "carta";
+                cartita.GetComponent<Seleccionable>().setPadre("CMano");
                 cartita.GetComponent<Seleccionable>().faceUp = true;
                 zOffset = zOffset + 0.03f;
                 j++;
