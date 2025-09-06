@@ -6,6 +6,8 @@ public class UserInput : MonoBehaviour
     Vector3 dragOffset;
     Vector3 posicionInicial;
 
+    public float separacionY = 0.18f; //esto es para mover las cartas hacia abajo cuado las montemos
+
     void Update()
     {
         Vector3 mouse = Camera.main.ScreenToWorldPoint(Input.mousePosition);
@@ -13,35 +15,102 @@ public class UserInput : MonoBehaviour
 
         if (Input.GetMouseButtonDown(0))
         {
-            Collider2D hit = Physics2D.OverlapPoint(mouse);
-            if (hit != null && hit.CompareTag("carta"))
+            Collider2D hit = Physics2D.OverlapPoint(mouse); //El colider OverlapPoint ve inmediatamente el primer colider que esta bajo esta posicion.
+            if (hit != null && hit.CompareTag("carta")) //En este caso veremos que lo primero que esta bajo el mouse son las cartas que tienen que llevar el tag "carta"
             {
+                //todo lo que va aqui es para mover la carta 
                 dragTransform = hit.transform;
                 posicionInicial = dragTransform.position;
                 dragOffset = dragTransform.position - mouse;
             }
         }
 
-        if (Input.GetMouseButton(0) && dragTransform != null)
+        if (Input.GetMouseButton(0) && dragTransform != null) //Con este metodo hacemos que cuando este presionado, lleve la carta pegada al mouse
         {
             dragTransform.position = mouse + dragOffset;
         }
 
-        if (Input.GetMouseButtonUp(0) && dragTransform != null)
+        if (Input.GetMouseButtonDown(1))
         {
-            Collider2D[] hits = Physics2D.OverlapPointAll(dragTransform.position);
-            Collider2D destino = null;
-            foreach (var h in hits) { if (h.CompareTag("padre")) { destino = h; break; } }
+            Collider2D[] hits = Physics2D.OverlapPointAll(mouse); //este es un arreglo de colliders donde vemos todos los que estan bajo esa posicion
+            int cartasYaEnDestino = hits.Length - 1;
+            Debug.Log("cartas en la wea " + cartasYaEnDestino);
+        }
+
+        if (Input.GetMouseButtonUp(0) && dragTransform != null) //aqui es donde deberiamos ver todas las reglas para cuando soltamos la carta
+        {
+            Collider2D[] hits = Physics2D.OverlapPointAll(mouse); //este es un arreglo de colliders donde vemos todos los que estan bajo esa posicion
+            Collider2D destino = null; //creamos un collider 2d llamado "destino"
+
+            foreach (var h in hits) //con esto buscamos el collider que tenga el tag padre (osea que esta vacio el lugar) y hacemos que destino sea ese padre
+            { 
+                if (h.CompareTag("padre"))
+                { 
+                    destino = h;
+                    break; 
+                } 
+            } 
+
             if (destino != null)
             {
-                dragTransform.SetParent(destino.transform);
-                Vector3 p = destino.transform.position;
-                p.z = dragTransform.position.z;
-                dragTransform.position = p;
+                string idCarta = dragTransform.name;     
+                string nombreDestino = destino.name;
+
+                if (nombreDestino == "Comodines") 
+                {
+
+                    if (idCarta.EndsWith("k") || idCarta.EndsWith("N") || idCarta.EndsWith("R"))
+                    {
+                        int cantidadHijos = 0;
+                        for (int i = 0; i < destino.transform.childCount; i++)
+                            if (destino.transform.GetChild(i).CompareTag("carta"))
+                                cantidadHijos++;
+
+                        dragTransform.SetParent(destino.transform, true); // hago que mi arrastre se convierta en hijo de la posicion destino.
+                        Vector3 posicionDestino = destino.transform.position; //destino sera copia de la posicion del padre
+                        posicionDestino.z = -0.03f * cantidadHijos; //aumentamos la posicion en z hacia arriba visualmente. 
+                        dragTransform.position = posicionDestino;                        
+                    }
+                    else
+                    {
+                        Debug.Log("No es un comodin");
+                        dragTransform.position = posicionInicial; //vuelve a pos inicial
+                    }
+                }
+
+                else if (nombreDestino.StartsWith("Espacio"))
+                {
+                    if (!idCarta.EndsWith("k") && !idCarta.EndsWith("N") && !idCarta.EndsWith("R") && !idCarta.EndsWith("a"))
+                    {
+                        int cantidadHijos = 0;
+                        for (int i = 0; i < destino.transform.childCount; i++)
+                            if (destino.transform.GetChild(i).CompareTag("carta"))
+                                cantidadHijos++;
+
+                        dragTransform.SetParent(destino.transform, true);
+                        Vector3 posicionDestino = destino.transform.position; //destino sera copia de la posicion del padre
+                        posicionDestino.z = -0.03f * cantidadHijos; //aumentamos la posicion en z hacia arriba visualmente. 
+                        //posicionDestino.y = -0.4f * cantidadHijos; //bajamos posicion de carta en y (hacia abajo)
+                        dragTransform.position = posicionDestino;
+
+                    }
+                    else
+                    {
+                        Debug.Log("No es una carta valida (estas poniendo comodines o un as)");
+                        dragTransform.position = posicionInicial; //vuelve a pos inicial
+                    }
+                }
+
+
+                else
+                {
+                    dragTransform.position = posicionInicial; //vuelve a pos inicial
+                }
+
             }
             else
             {
-                dragTransform.position = posicionInicial;
+                dragTransform.position = posicionInicial; //vuelve a pos inicial 
             }
             dragTransform = null;
         }
