@@ -88,9 +88,18 @@ public class UserInput : MonoBehaviour
                                 cantidadHijos++;
 
                         dragTransform.SetParent(destino.transform, true);
-                        Vector3 posicionDestino = destino.transform.position; //destino sera copia de la posicion del padre
-                        posicionDestino.z = -0.03f * cantidadHijos; //aumentamos la posicion en z hacia arriba visualmente. 
-                        //posicionDestino.y = -0.4f * cantidadHijos; //bajamos posicion de carta en y (hacia abajo)
+
+                        Vector3 posicionDestino = destino.transform.position + new Vector3(0f, -0.4f * cantidadHijos, 0f);
+                        posicionDestino.z = destino.transform.position.z + (-0.03f * cantidadHijos);
+                        
+                        
+                        //------------------------------------
+                        // Esto ultimo hace que se pongan las caratas sobre la posicion del padre, y se aplilan hacia abajo, perfecto,
+                        // pero ahora necesitamos que considere solo la posicion de la ultima carta, ya que esa sera la unica que se podra hacer clic o 
+                        // la unica donde se podra poner una carta encima. 
+                        //------------------------------
+
+
                         dragTransform.position = posicionDestino;
 
                     }
