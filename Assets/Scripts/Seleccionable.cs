@@ -10,6 +10,4 @@ public class Seleccionable : MonoBehaviour
     {
         padre = nombrePadre;
     }
-
-
 }
