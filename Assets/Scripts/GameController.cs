@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Unity.VisualScripting;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 
 public class GameController : MonoBehaviour
@@ -11,6 +12,7 @@ public class GameController : MonoBehaviour
     public Sprite[] spritesCartas;
     public GameObject PrefabCarta;
     public int cantidadDeJugadores = 2;
+    public int jugadorActual = 0; //siempre parte el jugador 1
     public List<string> mazoCentral;
     public float zOffset = 0.03f;
     public float segundos = 0.03f;
@@ -60,7 +62,7 @@ public class GameController : MonoBehaviour
     {
         LimpiarTodo();
         mazoCentral = GenerarMazoCentral();
-        Barajar(mazoCentral);
+        Mezclar(mazoCentral);
         RepartirJugadores();
         MostrarCartas();
     }
@@ -91,7 +93,7 @@ public class GameController : MonoBehaviour
         return nuevoMazo;
     }
 
-    public void Barajar(List<string> mazo)
+    public void Mezclar(List<string> mazo)
     {
         //aqui las mezcla despues de crear
         System.Random random = new System.Random();
@@ -175,7 +177,56 @@ public class GameController : MonoBehaviour
             }
         }
     }
-    
+
+    public void TerminarTurno()
+    {
+        SiguienteJugador(jugadorActual); //cambiar al siguiente jugador
+        CompletarMano(); //rellenar la mano de este jugador
+        // (Aun no desarrollar) colocar automaticamente los comodines en espacios de comodines
+    }
+    public void CompletarMano()
+    {
+        Vector3 mouseVirtual = mazoCentralPos.transform.position;
+        Collider2D destino = null;
+        
+        //verifico los espacios y los vacios los relleno con la carta del mazocentral
+        for (int i = 0; i < 6; i++)
+        {
+            //voy fisicamente a la posicion y veo si tengo una carta llamada carta
+            mouseVirtual = manosPos[jugadorActual][i].transform.position;
+            Collider2D hit = Physics2D.OverlapPoint(mouseVirtual);
+            if (hit.CompareTag("padre")) //es decir que este espacio NO tiene carta
+            {
+                //asi copio el hit actual a la variable destino y lo puedo usar despues.
+                destino = hit;
+
+                //voy al centro a buscar la carta 
+                mouseVirtual = mazoCentralPos.transform.position;
+                Collider2D hit2 = Physics2D.OverlapPoint(mouseVirtual);
+
+                //si hay carta
+                if (hit2 != null && hit2.CompareTag("carta"))
+                {
+                    //el transform de esta carta pasa a estar ahora en la posicion de la mano que estamos evaluando
+                    hit2.transform.position = destino.transform.position;
+                    hit2.GetComponent<Seleccionable>().faceUp= true;
+                }
+                else
+                {
+                    Debug.Log("No hay mas cartas en el mazo central");
+                    destino = null;
+                }
+            }
+            else { Debug.Log($"El espacio{i + 1} de la mano del jugador{jugadorActual + 1} tiene una carta"); }
+        }
+    }
+
+    private void SiguienteJugador(int JugadorActual)
+    {
+        if (JugadorActual < cantidadDeJugadores - 1) { jugadorActual++; }
+        else { jugadorActual = 0; }
+    }
+
     public void LimpiarTodo()
     {
         var cartas = GameObject.FindGameObjectsWithTag("carta");

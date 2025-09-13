@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Rendering;
 
 public class UserInput : MonoBehaviour
 {
@@ -8,7 +9,8 @@ public class UserInput : MonoBehaviour
     string nombreUltimaCarta = "";
 
     public float separacionY = 0.18f; //esto es para mover las cartas hacia abajo cuado las montemos
-    
+    public GameController juego; //esto no lo estamos usando
+    //public int jugadorActual = 0; //todas las acciones seran con el jugador 1.
 
     void Update()
     {
@@ -20,19 +22,19 @@ public class UserInput : MonoBehaviour
             Collider2D hit = Physics2D.OverlapPoint(mouse); //El colider OverlapPoint ve inmediatamente el primer colider que esta bajo esta posicion.
             if (hit != null && hit.CompareTag("carta")) //En este caso veremos que lo primero que esta bajo el mouse son las cartas que tienen que llevar el tag "carta"
             {
-                //if(hit.GetComponent<Seleccionable>().padre=="CMazo") //mazo jugador
+                if (hit.GetComponent<Seleccionable>().padre == "CMazo" && !hit.GetComponent<Seleccionable>().faceUp) //mazo jugador y esta dado vuelta
+                {
+                    hit.GetComponent<Seleccionable>().faceUp = true;
+                    dragTransform = null;
+                    return;
+                }
+
+                //else if (hit.GetComponent<Seleccionable>().padre == "CMazoCentral")
                 //{
-                //    if(hit.GetComponent<Seleccionable>().faceUp == false)
-                //    {
-                //        hit.GetComponent<Seleccionable>().faceUp = true;
-                //    }
-                //}
-                //else
-                //{
-                //    //todo lo que va aqui es para mover la carta 
-                //    dragTransform = hit.transform;
-                //    posicionInicial = dragTransform.position;
-                //    dragOffset = dragTransform.position - mouse;
+                //    //verificar si el jugador tiene un espacio vacio en la mano y poner esta carta en esa posicion.
+                //    juego.CompletarMano(jugadorActual,hit.gameObject); //lo ideal seria que aqui pudieramos agregar alguna variable de jugador actual
+                //    dragTransform = null;
+                //    return;
                 //}
                 dragTransform = hit.transform;
                 posicionInicial = dragTransform.position;
@@ -40,27 +42,19 @@ public class UserInput : MonoBehaviour
             }
         }
 
-        if (Input.GetMouseButton(0) && dragTransform != null) //Con este metodo hacemos que cuando este presionado, lleve la carta pegada al mouse
-        {
-            dragTransform.position = mouse + dragOffset;
-        }
-
         if (Input.GetMouseButtonDown(1))
         {
-            Collider2D[] hits = Physics2D.OverlapPointAll(mouse); //este es un arreglo de colliders donde vemos todos los que estan bajo esa posicion
-            Collider2D destino = null; //creamos un collider 2d llamado "destino"
-            int cartasYaEnDestino = hits.Length - 1;
-            Debug.Log("cartas en la wea " + cartasYaEnDestino);
-
-            for (int i = 0; i < destino.transform.childCount; i++)
+            Collider2D hit = Physics2D.OverlapPoint(mouse); //este es un arreglo de colliders donde vemos todos los que estan bajo esa posicion
+            if (hit != null && hit.CompareTag("carta"))
             {
-                int cantidadHijos = 0;
-                if (destino.transform.GetChild(i).CompareTag("carta"))
-                {
-                    nombreUltimaCarta = destino.name;
-                    cantidadHijos++;
-                }
+                Debug.Log("Carta: " +hit.name);
             }
+        }
+
+        if (Input.GetMouseButton(0) && dragTransform != null) //Con este metodo hacemos que cuando este presionado, lleve la carta pegada al mouse
+        {
+            //Debug.Log("estamos sosteniendo el clic");
+            dragTransform.position = mouse + dragOffset;
         }
 
         if (Input.GetMouseButtonUp(0) && dragTransform != null) //aqui es donde deberiamos ver todas las reglas para cuando soltamos la carta
@@ -135,7 +129,7 @@ public class UserInput : MonoBehaviour
 
 
                         dragTransform.position = posicionDestino;
-
+                        juego.TerminarTurno(); //con esto hacemos cambio de jugador y terminamos el turno, al terminar el otro jugador se rellena mi mano
                     }
                     else
                     {
