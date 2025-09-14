@@ -21,7 +21,9 @@ public class GameController : MonoBehaviour
     //POSICIONES DE LOS GO (LOS BORDES)
     public GameObject[] montonesPos;
     public GameObject mazoCentralPos;
+    public GameObject descartePos;
     public GameObject[] mazosJugadoresPos;
+    public GameObject[] comodinesJugadoresPos; //posiciones de los comodines de los jugadores 
     public GameObject[] manoJ1Pos; //todas las posiciones de la mano del jugador1
     public GameObject[] manoJ2Pos;
     public GameObject[] manoJ3Pos;
@@ -57,6 +59,22 @@ public class GameController : MonoBehaviour
 
         IniciarJuego();        
     }
+
+    //public void Update()
+    //{
+    //    for (int i=0;i<4;i++) //hacemos una revision rapida de los 4 puntos de montones para ver si hay que descartar las cartas.
+    //    {
+    //        if(montonesPos[i].transform.childCount == 12) //se lleno de cartas
+    //        {
+    //            foreach (GameObject go in montonesPos[i].transform)
+    //            {
+
+    //            }
+    //        }
+    //    }
+    //}
+
+
 
     public void IniciarJuego()
     {
@@ -199,25 +217,37 @@ public class GameController : MonoBehaviour
             {
                 //asi copio el hit actual a la variable destino y lo puedo usar despues.
                 destino = hit;
-
+                
                 //voy al centro a buscar la carta 
                 mouseVirtual = mazoCentralPos.transform.position;
                 Collider2D hit2 = Physics2D.OverlapPoint(mouseVirtual);
+                string nombreCarta = hit2.name;
 
                 //si hay carta
                 if (hit2 != null && hit2.CompareTag("carta"))
                 {
-                    //el transform de esta carta pasa a estar ahora en la posicion de la mano que estamos evaluando
-                    hit2.transform.position = destino.transform.position;
-                    hit2.GetComponent<Seleccionable>().faceUp= true;
+                    if (nombreCarta.EndsWith("k") || nombreCarta.EndsWith("R") || nombreCarta.EndsWith("N"))
+                    {
+                        hit2.transform.position = comodinesJugadoresPos[jugadorActual].transform.position; //posicion de comodines del jugador actual 
+                        hit2.GetComponent<Seleccionable>().faceUp = true;
+                        hit2.GetComponent<Seleccionable>().setPadre("CMano"); //no hay padre definido como comodines... 
+                    }
+                    else
+                    {
+                        //el transform de esta carta pasa a estar ahora en la posicion de la mano que estamos evaluando
+                        hit2.transform.position = destino.transform.position;
+                        hit2.GetComponent<Seleccionable>().faceUp = true;
+                        hit2.GetComponent<Seleccionable>().setPadre("CMano");
+                    }
                 }
                 else
                 {
                     Debug.Log("No hay mas cartas en el mazo central");
                     destino = null;
+                    break;
                 }
             }
-            else { Debug.Log($"El espacio{i + 1} de la mano del jugador{jugadorActual + 1} tiene una carta"); }
+            //else { Debug.Log($"El espacio{i + 1} de la mano del jugador{jugadorActual + 1} tiene una carta"); }
         }
     }
 
