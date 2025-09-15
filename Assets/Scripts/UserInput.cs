@@ -6,7 +6,7 @@ public class UserInput : MonoBehaviour
     Transform dragTransform;
     Vector3 dragOffset;
     Vector3 posicionInicial;
-    string nombreUltimaCarta = "";
+    //string nombreUltimaCarta = "";
 
     public float separacionY = 0.18f; //esto es para mover las cartas hacia abajo cuado las montemos
     public GameController juego; //esto no lo estamos usando
@@ -17,45 +17,56 @@ public class UserInput : MonoBehaviour
         Vector3 mouse = Camera.main.ScreenToWorldPoint(Input.mousePosition);
         mouse.z = 0f;
 
+        //-------------------------------------------------------------------------
+        // Debug clic derecho
+        //-------------------------------------------------------------------------
+        if (Input.GetMouseButtonDown(1))
+        {
+            var hit = TopCartaBajoMouse(mouse); //hit es un gameobject
+            if (hit != null)
+            {
+                Debug.Log("Carta: " + hit.name);
+            }
+        }
+
+        //-------------------------------------------------------------------------
+        // cuando hago clic
+        //-------------------------------------------------------------------------
         if (Input.GetMouseButtonDown(0))
         {
-            Collider2D hit = Physics2D.OverlapPoint(mouse); //El colider OverlapPoint ve inmediatamente el primer colider que esta bajo esta posicion.
-            if (hit != null && hit.CompareTag("carta")) //En este caso veremos que lo primero que esta bajo el mouse son las cartas que tienen que llevar el tag "carta"
+            var hitCarta = TopCartaBajoMouse(mouse); //el metodo nos retorna un gameobject de donde esta el mouse, y nos da la carta de mas arriba.
+            if (hitCarta != null) //si le hicimos clic a una carta
             {
-                if (hit.GetComponent<Seleccionable>().padre == "CMazo" && !hit.GetComponent<Seleccionable>().faceUp) //mazo jugador y esta dado vuelta
+                var sel=hitCarta.GetComponent<Seleccionable>();
+                if (sel != null&&sel.padre == "CMazo" && sel.faceUp == false) //si es un objeto del mazo jugador y boca abajo, entonces la damos vuelta
                 {
-                    hit.GetComponent<Seleccionable>().faceUp = true;
+                    sel.faceUp = true;
                     dragTransform = null;
                     return;
                 }
 
-                //else if (hit.GetComponent<Seleccionable>().padre == "CMazoCentral")
-                //{
-                //    //verificar si el jugador tiene un espacio vacio en la mano y poner esta carta en esa posicion.
-                //    juego.CompletarMano(jugadorActual,hit.gameObject); //lo ideal seria que aqui pudieramos agregar alguna variable de jugador actual
-                //    dragTransform = null;
-                //    return;
-                //}
-                dragTransform = hit.transform;
-                posicionInicial = dragTransform.position;
-                dragOffset = dragTransform.position - mouse;
+                //sino, solo la arrastramos (aplica para todas las cartas, menos las del mazo central). 
+                else if(sel.padre!="CMazoCentral")
+                {
+                    dragTransform = hitCarta.transform;
+                    posicionInicial = dragTransform.position;
+                    dragOffset = dragTransform.position - mouse;
+                }
             }
+
         }
 
-        if (Input.GetMouseButtonDown(1))
-        {
-            Collider2D hit = Physics2D.OverlapPoint(mouse); //este es un arreglo de colliders donde vemos todos los que estan bajo esa posicion
-            if (hit != null && hit.CompareTag("carta"))
-            {
-                Debug.Log("Carta: " +hit.name);
-            }
-        }
-
+        //-------------------------------------------------------------------------
+        //cuando mantengo apretado el clic
+        //-------------------------------------------------------------------------
         if (Input.GetMouseButton(0) && dragTransform != null) //Con este metodo hacemos que cuando este presionado, lleve la carta pegada al mouse
         {
-            //Debug.Log("estamos sosteniendo el clic");
             dragTransform.position = mouse + dragOffset;
         }
+
+        //-------------------------------------------------------------------------
+        //cando soltamos el clic  (UNDER DEVELOPMENT)
+        //-------------------------------------------------------------------------
 
         if (Input.GetMouseButtonUp(0) && dragTransform != null) //aqui es donde deberiamos ver todas las reglas para cuando soltamos la carta
         {
@@ -63,21 +74,21 @@ public class UserInput : MonoBehaviour
             Collider2D destino = null; //creamos un collider 2d llamado "destino"
 
             foreach (var h in hits) //con esto buscamos el collider que tenga el tag padre (osea que esta vacio el lugar) y hacemos que destino sea ese padre
-            { 
+            {
                 if (h.CompareTag("padre"))
-                { 
+                {
                     destino = h;
-                    break; 
-                } 
-            } 
+                    break;
+                }
+            }
 
             if (destino != null)
             {
-                string idCarta = dragTransform.name;     
+                string idCarta = dragTransform.name;
                 string nombreDestino = destino.name;
-                
-                
-                if (nombreDestino == "Comodines") 
+
+
+                if (nombreDestino == "Comodines")
                 {
                     if (idCarta.EndsWith("k") || idCarta.EndsWith("N") || idCarta.EndsWith("R"))
                     {
@@ -93,7 +104,7 @@ public class UserInput : MonoBehaviour
                         dragTransform.SetParent(destino.transform, true); // hago que mi arrastre se convierta en hijo de la posicion destino.
                         Vector3 posicionDestino = destino.transform.position; //destino sera copia de la posicion del padre
                         posicionDestino.z = -0.03f * cantidadHijos; //aumentamos la posicion en z hacia arriba visualmente. 
-                        dragTransform.position = posicionDestino;                        
+                        dragTransform.position = posicionDestino;
                     }
                     else
                     {
@@ -119,8 +130,8 @@ public class UserInput : MonoBehaviour
 
                         Vector3 posicionDestino = destino.transform.position + new Vector3(0f, -0.4f * cantidadHijos, 0f);
                         posicionDestino.z = destino.transform.position.z + (-0.03f * cantidadHijos);
-                        
-                        
+
+
                         //------------------------------------
                         // Esto ultimo hace que se pongan las caratas sobre la posicion del padre, y se aplilan hacia abajo, perfecto,
                         // pero ahora necesitamos que considere solo la posicion de la ultima carta, ya que esa sera la unica que se podra hacer clic o 
@@ -142,20 +153,20 @@ public class UserInput : MonoBehaviour
                 {
                     int numeroCarta = 0;
                     int cantidadHijos = 0;
-                    nombreUltimaCarta = "";
+                    //nombreUltimaCarta = "";
 
-                    if(true)
+                    if (true)
                     {
                         if (!idCarta.EndsWith("a") && !idCarta.EndsWith("k") && !idCarta.EndsWith("q") && !idCarta.EndsWith("j") && !idCarta.EndsWith("N") && !idCarta.EndsWith("R"))
                         {
                             //con esto paso el numero de la carta a entero
                             numeroCarta = int.Parse(idCarta.Substring(idCarta.Length - 1));
                         }
-                        else if(idCarta.EndsWith("0"))
+                        else if (idCarta.EndsWith("0"))
                         {
                             numeroCarta = 10;
                         }
-                        else if(idCarta.EndsWith("j"))
+                        else if (idCarta.EndsWith("j"))
                         {
                             numeroCarta = 11;
                         }
@@ -164,17 +175,17 @@ public class UserInput : MonoBehaviour
                             numeroCarta = 12;
                         }
                     }
-                                        
+
                     for (int i = 0; i < destino.transform.childCount; i++)
                     {
                         if (destino.transform.GetChild(i).CompareTag("carta"))
                         {
-                            nombreUltimaCarta = destino.name;
+                            //nombreUltimaCarta = destino.name;
                             cantidadHijos++;
                         }
                     }
-                    
-                    if (idCarta.EndsWith("a")&&cantidadHijos==0)
+
+                    if (idCarta.EndsWith("a") && cantidadHijos == 0)
                     {
                         Debug.Log("Carta termina con A");
                         dragTransform.SetParent(destino.transform, true); // hago que mi arrastre se convierta en hijo de la posicion destino.
@@ -182,7 +193,7 @@ public class UserInput : MonoBehaviour
                         posicionDestino.z = -0.03f * cantidadHijos; //aumentamos la posicion en z hacia arriba visualmente. 
                         dragTransform.position = posicionDestino;
                     }
-                    else if (numeroCarta == cantidadHijos+1)
+                    else if (numeroCarta == cantidadHijos + 1)
                     {
                         Debug.Log("numero carta es igual a la cantidad hijos");
                         dragTransform.SetParent(destino.transform, true); // hago que mi arrastre se convierta en hijo de la posicion destino.
@@ -190,21 +201,21 @@ public class UserInput : MonoBehaviour
                         posicionDestino.z = -0.03f * cantidadHijos; //aumentamos la posicion en z hacia arriba visualmente. 
                         dragTransform.position = posicionDestino;
                     }
-                    else if (idCarta.EndsWith("k")||idCarta.EndsWith("N")||idCarta.EndsWith("R"))
+                    else if (idCarta.EndsWith("k") || idCarta.EndsWith("N") || idCarta.EndsWith("R"))
                     {
                         Debug.Log("la carta es un comodin");
-                        if (nombreUltimaCarta.EndsWith("k")||nombreUltimaCarta.EndsWith("N") || nombreUltimaCarta.EndsWith("R")) //verificar si no hay otro comodin abajo
-                        {
-                            Debug.Log("nombre de ultima carta es comodin, no se puede poner un comodin");                            
-                        }
-                        else
-                        {
-                            Debug.Log("la ultima carta no es comodin asi que podemos usar un comodin");
-                            dragTransform.SetParent(destino.transform, true); // hago que mi arrastre se convierta en hijo de la posicion destino.
-                            Vector3 posicionDestino = destino.transform.position; //destino sera copia de la posicion del padre
-                            posicionDestino.z = -0.03f * cantidadHijos; //aumentamos la posicion en z hacia arriba visualmente. 
-                            dragTransform.position = posicionDestino;
-                        }
+                        //if (nombreUltimaCarta.EndsWith("k")||nombreUltimaCarta.EndsWith("N") || nombreUltimaCarta.EndsWith("R")) //verificar si no hay otro comodin abajo
+                        //{
+                        //    Debug.Log("nombre de ultima carta es comodin, no se puede poner un comodin");                            
+                        //}
+                        //else
+                        //{
+                        //    Debug.Log("la ultima carta no es comodin asi que podemos usar un comodin");
+                        //    dragTransform.SetParent(destino.transform, true); // hago que mi arrastre se convierta en hijo de la posicion destino.
+                        //    Vector3 posicionDestino = destino.transform.position; //destino sera copia de la posicion del padre
+                        //    posicionDestino.z = -0.03f * cantidadHijos; //aumentamos la posicion en z hacia arriba visualmente. 
+                        //    dragTransform.position = posicionDestino;
+                        //}
                     }
                     else
                     {
@@ -226,5 +237,26 @@ public class UserInput : MonoBehaviour
             }
             dragTransform = null;
         }
+    }
+
+    //HELPERS
+    private GameObject TopCartaBajoMouse(Vector3 mouse)
+    {
+        Collider2D[] hits = Physics2D.OverlapPointAll(mouse);
+        GameObject top = null;
+        int mejorOrden = int.MinValue; //le ponemos el valor mas bajo para un entero (simplemente para no poner -1)  
+
+        foreach (Collider2D h in hits)
+        {
+            if (h == null || !h.CompareTag("carta")) continue; //si entre todos los collider que detecta no hay ninguno con tag "carta", entonces dejara top como null
+            var sr = h.GetComponent<SpriteRenderer>(); //esto es para tener informacion de su sortingOrder
+            int orden = sr ? sr.sortingOrder : 0; //basicamente aqui digo que orden toma el valor de sr.sortingOrder, si no encuentra ningun sprite render, lo coloca como 0
+            if (orden >= mejorOrden)
+            {
+                mejorOrden = orden;
+                top = h.gameObject; //con esto cada vez que el orden sea mayor al mejorOrden encontrado, guardaremos el collider como si fuera Top.
+            }
+        }
+        return top;
     }
 }

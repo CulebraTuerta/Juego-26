@@ -153,6 +153,7 @@ public class GameController : MonoBehaviour
                 GameObject cartita = Instantiate(PrefabCarta, mazosJugadoresPos[i].transform.position, Quaternion.identity);
                 cartita.name = carta;
                 cartita.tag = "carta";
+                cartita.GetComponent<Seleccionable>().setPadre("CMazo");
                 if (ordenMazoJ == 19)
                 {
                     cartita.GetComponent<Seleccionable>().faceUp = true;
@@ -213,14 +214,14 @@ public class GameController : MonoBehaviour
 
             //mientras el slot este vacio, sacamos cartas del mazo central y las ponemos en la mano, 
             //si son comodines, no nos saca de este slot
-            while (SlotEstaVacio(slot)) // *********************************************** ESTO GENERA UN LOOOOOOP INFINITOOOO*******************************
+            while (SlotEstaVacio(slot)) 
             {
                 GameObject cartaTop = TomarTopMazoCentral();
                 if (cartaTop == null)
                 {
                     Debug.Log("No hay mas cartas en el mazo central");
                     //METODO PARA HACER EL PROCESO DE METER LAS CARTAS DEL DESCARTE NUEVAMENTE EN EL MAZO CENTRAL. 
-                    return; //COMENTAR esta linea cuando hagamos el metodo anterior. 
+                    continue; //COMENTAR esta linea cuando hagamos el metodo anterior. 
                 }
 
                 // Si la carta top es un comodin
@@ -281,56 +282,6 @@ public class GameController : MonoBehaviour
                 return false;
         return true;
     }
-
-    //public void CompletarMano()
-    //{
-    //    Vector3 mouseVirtual = mazoCentralPos.transform.position;
-    //    Collider2D destino = null;
-        
-    //    //verifico los espacios y los vacios los relleno con la carta del mazocentral
-    //    for (int i = 0; i < 6; i++)
-    //    {
-    //        //voy fisicamente a la posicion y veo si tengo una carta llamada carta
-    //        mouseVirtual = manosPos[jugadorActual][i].transform.position;
-    //        Collider2D hit = Physics2D.OverlapPoint(mouseVirtual);
-    //        if (hit.CompareTag("padre")) //es decir que este espacio NO tiene carta
-    //        {
-    //            //asi copio el hit actual a la variable destino y lo puedo usar despues.
-    //            destino = hit;
-                
-    //            //voy al centro a buscar la carta 
-    //            mouseVirtual = mazoCentralPos.transform.position;
-    //            Collider2D hit2 = Physics2D.OverlapPoint(mouseVirtual);
-    //            string nombreCarta = hit2.name;
-
-    //            //si hay carta
-    //            if (hit2 != null && hit2.CompareTag("carta"))
-    //            {
-    //                if (nombreCarta.EndsWith("k") || nombreCarta.EndsWith("R") || nombreCarta.EndsWith("N"))
-    //                {
-    //                    hit2.transform.position = comodinesJugadoresPos[jugadorActual].transform.position; //posicion de comodines del jugador actual 
-    //                    hit2.GetComponent<Seleccionable>().faceUp = true;
-    //                    hit2.GetComponent<Seleccionable>().setPadre("CMano"); //no hay padre definido como comodines... 
-    //                }
-    //                else
-    //                {
-    //                    //el transform de esta carta pasa a estar ahora en la posicion de la mano que estamos evaluando
-    //                    hit2.transform.position = destino.transform.position;
-    //                    hit2.GetComponent<Seleccionable>().faceUp = true;
-    //                    hit2.GetComponent<Seleccionable>().setPadre("CMano");
-    //                }
-    //            }
-    //            else
-    //            {
-    //                Debug.Log("No hay mas cartas en el mazo central");
-    //                destino = null;
-    //                break;
-    //            }
-    //        }
-    //        //else { Debug.Log($"El espacio{i + 1} de la mano del jugador{jugadorActual + 1} tiene una carta"); }
-    //    }
-    //}
-
     private void SiguienteJugador(int JugadorActual)
     {
         if (JugadorActual < cantidadDeJugadores - 1) { jugadorActual++; }
@@ -351,6 +302,5 @@ public class GameController : MonoBehaviour
         manoJ2.Clear();
         manoJ3.Clear();
         manoJ4.Clear();
-        zOffset = 0;
     }
 }
