@@ -60,22 +60,6 @@ public class GameController : MonoBehaviour
         IniciarJuego();        
     }
 
-    //public void Update()
-    //{
-    //    for (int i=0;i<4;i++) //hacemos una revision rapida de los 4 puntos de montones para ver si hay que descartar las cartas.
-    //    {
-    //        if(montonesPos[i].transform.childCount == 12) //se lleno de cartas
-    //        {
-    //            foreach (GameObject go in montonesPos[i].transform)
-    //            {
-
-    //            }
-    //        }
-    //    }
-    //}
-
-
-
     public void IniciarJuego()
     {
         LimpiarTodo();
@@ -125,65 +109,12 @@ public class GameController : MonoBehaviour
             mazo[n] = temp;
         }
     }
-    
-    private void MostrarCartas()
-    {
-        int j = 0;
-        int contador = 1;
-        //muestro las cartas que quedan en el mazo
-        foreach (string carta in mazoCentral)
-        {
-            GameObject cartita = Instantiate(PrefabCarta, new Vector3(mazoCentralPos.transform.position.x, mazoCentralPos.transform.position.y, mazoCentralPos.transform.position.z - zOffset), Quaternion.identity); //en este caso el transform position es del GO del juego26
-            cartita.name = carta; //asi toma el nombre del string carta in mazocentral
-            cartita.tag = "carta";
-            cartita.GetComponent<Seleccionable>().faceUp = false;
-            cartita.GetComponent<Seleccionable>().setPadre("CMazoCentral");
-            zOffset = zOffset + 0.03f;
-        }
-        zOffset = 0.03f; //vuelvo a poner el offset de z en el inicial.
-
-        //muestro cartas de los mazos de jugadores
-        for (int i = 0; i < cantidadDeJugadores; i++) //por cada jugador, instanciaremos sus cartas de sus respectivos mazos
-        {
-            //muestro las cartas de sus mazos
-            foreach (string carta in mazosJugadores[i]) //esta lista tiene todos los mazos de los jugadores
-            {
-                GameObject cartita = Instantiate(PrefabCarta, new Vector3(mazosJugadoresPos[i].transform.position.x, mazosJugadoresPos[i].transform.position.y, mazosJugadoresPos[i].transform.position.z - zOffset), Quaternion.identity); //en este caso el transform position es del GO del juego26
-                cartita.name = carta; //asi toma el nombre del string carta in mazojugador[i]
-                cartita.tag = "carta";
-                cartita.GetComponent<Seleccionable>().setPadre("CMazo");
-                if (contador==mazosJugadores[i].Count)
-                {
-                    cartita.GetComponent<Seleccionable>().faceUp = true;
-                }
-                else { cartita.GetComponent<Seleccionable>().faceUp = false; }
-                zOffset = zOffset + 0.03f;
-                contador++;
-            }
-            zOffset = 0.03f; //lo seteo nuevamente para el nuevo jugador.
-            
-            //muestro las cartas de sus manos
-            foreach (string carta in manosJugadores[i]) //esta lista tiene todos las manos de los jugadores
-            {
-                GameObject cartita = Instantiate(PrefabCarta, new Vector3(manosPos[i][j].transform.position.x, manosPos[i][j].transform.position.y, manosPos[i][j].transform.position.z - zOffset), Quaternion.identity); //en este caso el transform position es del GO del juego26
-                cartita.name = carta; //asi toma el nombre del string carta in mazojugador[i]
-                cartita.tag = "carta";
-                cartita.GetComponent<Seleccionable>().setPadre("CMano");
-                cartita.GetComponent<Seleccionable>().faceUp = true;
-                zOffset = zOffset + 0.03f;
-                j++;
-            }
-            zOffset = 0.03f; //lo seteo nuevamente para el nuevo jugador.
-            j = 0;
-            contador = 1;
-        }
-    }
 
     private void RepartirJugadores()
     {
-        for (int i = 0;i < cantidadDeJugadores; i++)
+        for (int i = 0; i < cantidadDeJugadores; i++)
         {
-            for (int j = 0; j< 20; j++) //con esto reparto 20 cartas a cada jugador segun la cantidad de jugadore
+            for (int j = 0; j < 20; j++) //con esto reparto 20 cartas a cada jugador segun la cantidad de jugadore
             {
                 mazosJugadores[i].Add(mazoCentral.Last<string>());
                 mazoCentral.RemoveAt(mazoCentral.Count - 1);
@@ -196,60 +127,209 @@ public class GameController : MonoBehaviour
         }
     }
 
+    private void MostrarCartas() //realmente es un metodo para COLOLAR las cartas en la mesa de juego
+    {
+        //------------------------------------------------------------------
+        //MOSTRAR CARTAS EN EL MAZO CENTRAL
+        int ordenMazoCentral = 0; //chatgpt me dio un metodo medio raro, pero finalmente decia que lo dejaba en cero al iniciar... 
+        foreach (string carta in mazoCentral)
+        {
+            GameObject cartita = Instantiate(PrefabCarta, mazoCentralPos.transform.position, Quaternion.identity);
+            cartita.name = carta;
+            cartita.tag = "carta";
+            cartita.GetComponent<Seleccionable>().faceUp = false;
+            cartita.GetComponent<Seleccionable>().setPadre("CMazoCentral");
+            ApilarEnAncla(cartita,mazoCentralPos.transform,ref ordenMazoCentral); //con este nuevo metodo estamos haciendo lo de colocar en orden en el mazo.
+            //OBSERVACION, el ref dentro de aplilarEnAncla hace subir el valor de donde se esta evaluando( el metodo aumentara el ordenMazoCentral simplemente por estar referenciado)
+        }
+
+        //------------------------------------------------------------------
+        //MOSTRAR CARTAS EN LOS MAZOS JUGADORES  (solo la ultima ira boca arriba)
+        for (int i = 0; i < cantidadDeJugadores; i++) //por cada jugador, instanciaremos sus cartas de sus respectivos mazos
+        {
+            int ordenMazoJ = 0;
+            foreach (string carta in mazosJugadores[i])
+            {
+                GameObject cartita = Instantiate(PrefabCarta, mazosJugadoresPos[i].transform.position, Quaternion.identity);
+                cartita.name = carta;
+                cartita.tag = "carta";
+                if (ordenMazoJ == 19)
+                {
+                    cartita.GetComponent<Seleccionable>().faceUp = true;
+                }
+                else { cartita.GetComponent<Seleccionable>().faceUp = false; }
+                ApilarEnAncla(cartita, mazosJugadoresPos[i].transform, ref ordenMazoJ);
+            }
+        }
+        //------------------------------------------------------------------
+        //MOSTRAR CARTAS EN LAS MANOS JUGADORES
+        for (int i = 0; i < cantidadDeJugadores; i++) //por cada jugador, instanciaremos sus cartas de sus manos (6 cartas)
+        {
+            int j = 0; //cada que inicia la repartida de mano de cada jugador, J tiene que ser 0
+            //Debug.Log($"Recorrido de jugador{i+1},con i={i} y j={j}");
+            foreach (string carta in manosJugadores[i]) //en el J1 (i=0), en este caso cada carta en ManoJ1 (es una lista de cartas string)
+            {
+                GameObject cartita = Instantiate(PrefabCarta, manosPos[i][j].transform.position, Quaternion.identity); //en este caso el transform position es del GO del juego26
+                cartita.name = carta; //asi toma el nombre del string carta in manosjugador[i]
+                cartita.tag = "carta";
+                cartita.GetComponent<Seleccionable>().setPadre("CMano");
+                cartita.GetComponent<Seleccionable>().faceUp = true; //todas visibles
+                int ordenCartaMano = 0; //con esto hacemos que las manos siempre esten en el orden CERO. 
+                //Debug.Log($"Apilando en manosPos[{i}][{j}]");
+                ApilarEnAncla(cartita, manosPos[i][j].transform, ref ordenCartaMano);
+                j++;
+            }
+        }
+    }
+
+    private void ApilarEnAncla(GameObject cartaGO, Transform ancla, ref int orderCursor)
+    {
+        //con esto hacemos hijo y lo posicionamos en el padre(ancla)
+        cartaGO.transform.SetParent(ancla,true);
+        cartaGO.transform.position = ancla.position;
+
+        //subimos el orden para la siguiente carta
+        var sr = cartaGO.GetComponent<SpriteRenderer>(); //obtenemos el spriterenderer de la carta
+        orderCursor += 1; //sumamos uno a la variable en referencia.
+        sr.sortingOrder = orderCursor; //con esto le seteamos al sprite que se ponga en el orden determinado (el anterior +1)
+        sr.sortingLayerID = ancla.GetComponent<SpriteRenderer>().sortingLayerID; //esto no se si esta haciendo mucho... ELIMINAR O COMENTAR MAS ADELANTE
+    }
+
     public void TerminarTurno()
     {
         SiguienteJugador(jugadorActual); //cambiar al siguiente jugador
         CompletarMano(); //rellenar la mano de este jugador
-        // (Aun no desarrollar) colocar automaticamente los comodines en espacios de comodines
     }
+
     public void CompletarMano()
     {
-        Vector3 mouseVirtual = mazoCentralPos.transform.position;
-        Collider2D destino = null;
-        
-        //verifico los espacios y los vacios los relleno con la carta del mazocentral
-        for (int i = 0; i < 6; i++)
+        for (int i = 0;i<6;i++) //recorremos los 6 slots de la mano del jugadorActual
         {
-            //voy fisicamente a la posicion y veo si tengo una carta llamada carta
-            mouseVirtual = manosPos[jugadorActual][i].transform.position;
-            Collider2D hit = Physics2D.OverlapPoint(mouseVirtual);
-            if (hit.CompareTag("padre")) //es decir que este espacio NO tiene carta
-            {
-                //asi copio el hit actual a la variable destino y lo puedo usar despues.
-                destino = hit;
-                
-                //voy al centro a buscar la carta 
-                mouseVirtual = mazoCentralPos.transform.position;
-                Collider2D hit2 = Physics2D.OverlapPoint(mouseVirtual);
-                string nombreCarta = hit2.name;
+            //int sortingOrder = 0;
+            Transform slot = manosPos[jugadorActual][i].transform; //establecemos slot como una transform de la posicion de la mano del jugador actual (recorriendo todos sus slots)
 
-                //si hay carta
-                if (hit2 != null && hit2.CompareTag("carta"))
-                {
-                    if (nombreCarta.EndsWith("k") || nombreCarta.EndsWith("R") || nombreCarta.EndsWith("N"))
-                    {
-                        hit2.transform.position = comodinesJugadoresPos[jugadorActual].transform.position; //posicion de comodines del jugador actual 
-                        hit2.GetComponent<Seleccionable>().faceUp = true;
-                        hit2.GetComponent<Seleccionable>().setPadre("CMano"); //no hay padre definido como comodines... 
-                    }
-                    else
-                    {
-                        //el transform de esta carta pasa a estar ahora en la posicion de la mano que estamos evaluando
-                        hit2.transform.position = destino.transform.position;
-                        hit2.GetComponent<Seleccionable>().faceUp = true;
-                        hit2.GetComponent<Seleccionable>().setPadre("CMano");
-                    }
-                }
-                else
+            // si tiene una carta (devolverá false y eso negado es true, por ende si tiene una carta entraremos aqui),yyyyy continuaremos con el proximo punto i
+            if (!SlotEstaVacio(slot)) { continue; }
+
+            //mientras el slot este vacio, sacamos cartas del mazo central y las ponemos en la mano, 
+            //si son comodines, no nos saca de este slot
+            while (SlotEstaVacio(slot)) // *********************************************** ESTO GENERA UN LOOOOOOP INFINITOOOO*******************************
+            {
+                GameObject cartaTop = TomarTopMazoCentral();
+                if (cartaTop == null)
                 {
                     Debug.Log("No hay mas cartas en el mazo central");
-                    destino = null;
-                    break;
+                    //METODO PARA HACER EL PROCESO DE METER LAS CARTAS DEL DESCARTE NUEVAMENTE EN EL MAZO CENTRAL. 
+                    return; //COMENTAR esta linea cuando hagamos el metodo anterior. 
                 }
+
+                // Si la carta top es un comodin
+                if(cartaTop.name.EndsWith("k")|| cartaTop.name.EndsWith("R")|| cartaTop.name.EndsWith("N"))
+                {
+                    int comodinOrder = SiguienteOrden(comodinesJugadoresPos[jugadorActual].transform);
+                    cartaTop.GetComponent<Seleccionable>().faceUp = true; //primero damos vuelta su cara y luego la posicionamos
+                    cartaTop.GetComponent<Seleccionable>().setPadre("CComodin"); //aun no se si el padre implica algo, el nombre... quizas borrar (REVISAR)
+                    ApilarEnAncla(cartaTop, comodinesJugadoresPos[jugadorActual].transform, ref comodinOrder); //NO SE SI ESTO FUNCIONARA! DEBUGEAR.
+                    continue;
+                }
+                
+                int slotOrder = SiguienteOrden(slot);
+                cartaTop.GetComponent<Seleccionable>().faceUp = true; //primero damos vuelta su cara y luego la posicionamos
+                cartaTop.GetComponent<Seleccionable>().setPadre("CMano"); //aun no se si el padre implica algo, el nombre... quizas borrar (REVISAR)
+                ApilarEnAncla(cartaTop, slot, ref slotOrder); //NO SE SI ESTO FUNCIONARA! DEBUGEAR.
+                break;
             }
-            //else { Debug.Log($"El espacio{i + 1} de la mano del jugador{jugadorActual + 1} tiene una carta"); }
         }
     }
+
+    private int SiguienteOrden(Transform ancla) //con este metodo podemos ver el ancla que necesitemos revisar
+                                                //y entregamos de vuelta el orden que deberia tener la carta que se quiere poner
+    {
+        int max = 0;
+        for(int i= 0;i<ancla.childCount;i++) //hago una revision por todos los hijos del ancla
+        {
+            max = ancla.GetChild(i).GetComponent<SpriteRenderer>().sortingOrder;
+        }
+        return max += 1;
+    }
+
+    private GameObject TomarTopMazoCentral()
+    {
+        Collider2D[] hits = Physics2D.OverlapPointAll(mazoCentralPos.transform.position);
+        GameObject top = null;
+        int mejorOrden = int.MinValue; //le ponemos el valor mas bajo para un entero (simplemente para no poner -1)  
+
+        foreach(Collider2D h in hits)
+        {
+            if (h == null || !h.CompareTag("carta")) continue; //si entre todos los collider que detecta no hay ninguno con tag "carta", entonces dejara top como null
+            var sr = h.GetComponent<SpriteRenderer>(); //esto es para tener informacion de su sortingOrder
+            int orden = sr ? sr.sortingOrder : 0; //basicamente aqui digo que orden toma el valor de sr.sortingOrder, si no encuentra ningun sprite render, lo coloca como 0
+            if (orden >= mejorOrden)
+            {
+                mejorOrden = orden;
+                top = h.gameObject; //con esto cada vez que el orden sea mayor al mejorOrden encontrado, guardaremos el collider como si fuera Top.
+            }
+        }
+        return top;
+    }
+
+    private bool SlotEstaVacio(Transform slotito) //si el slot esta vacio devuelve True. 
+    {
+        var hits = Physics2D.OverlapPointAll(slotito.position);
+        foreach (var h in hits)
+            if (h != null && h.CompareTag("carta"))
+                return false;
+        return true;
+    }
+
+    //public void CompletarMano()
+    //{
+    //    Vector3 mouseVirtual = mazoCentralPos.transform.position;
+    //    Collider2D destino = null;
+        
+    //    //verifico los espacios y los vacios los relleno con la carta del mazocentral
+    //    for (int i = 0; i < 6; i++)
+    //    {
+    //        //voy fisicamente a la posicion y veo si tengo una carta llamada carta
+    //        mouseVirtual = manosPos[jugadorActual][i].transform.position;
+    //        Collider2D hit = Physics2D.OverlapPoint(mouseVirtual);
+    //        if (hit.CompareTag("padre")) //es decir que este espacio NO tiene carta
+    //        {
+    //            //asi copio el hit actual a la variable destino y lo puedo usar despues.
+    //            destino = hit;
+                
+    //            //voy al centro a buscar la carta 
+    //            mouseVirtual = mazoCentralPos.transform.position;
+    //            Collider2D hit2 = Physics2D.OverlapPoint(mouseVirtual);
+    //            string nombreCarta = hit2.name;
+
+    //            //si hay carta
+    //            if (hit2 != null && hit2.CompareTag("carta"))
+    //            {
+    //                if (nombreCarta.EndsWith("k") || nombreCarta.EndsWith("R") || nombreCarta.EndsWith("N"))
+    //                {
+    //                    hit2.transform.position = comodinesJugadoresPos[jugadorActual].transform.position; //posicion de comodines del jugador actual 
+    //                    hit2.GetComponent<Seleccionable>().faceUp = true;
+    //                    hit2.GetComponent<Seleccionable>().setPadre("CMano"); //no hay padre definido como comodines... 
+    //                }
+    //                else
+    //                {
+    //                    //el transform de esta carta pasa a estar ahora en la posicion de la mano que estamos evaluando
+    //                    hit2.transform.position = destino.transform.position;
+    //                    hit2.GetComponent<Seleccionable>().faceUp = true;
+    //                    hit2.GetComponent<Seleccionable>().setPadre("CMano");
+    //                }
+    //            }
+    //            else
+    //            {
+    //                Debug.Log("No hay mas cartas en el mazo central");
+    //                destino = null;
+    //                break;
+    //            }
+    //        }
+    //        //else { Debug.Log($"El espacio{i + 1} de la mano del jugador{jugadorActual + 1} tiene una carta"); }
+    //    }
+    //}
 
     private void SiguienteJugador(int JugadorActual)
     {
@@ -260,6 +340,7 @@ public class GameController : MonoBehaviour
     public void LimpiarTodo()
     {
         var cartas = GameObject.FindGameObjectsWithTag("carta");
+        jugadorActual = 0;
         foreach(var item in cartas) { Destroy(item); }
         mazoCentral.Clear();
         mazoJ1.Clear();
