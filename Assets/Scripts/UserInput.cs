@@ -1,3 +1,4 @@
+using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -6,9 +7,10 @@ public class UserInput : MonoBehaviour
     Transform dragTransform;
     Vector3 dragOffset;
     Vector3 posicionInicial;
+    public GameObject descartePos;
     //string nombreUltimaCarta = "";
 
-    public float separacionY = 0.18f; //esto es para mover las cartas hacia abajo cuado las montemos
+    public float separacionY = 0.22f; //esto es para mover las cartas hacia abajo cuado las montemos
     public GameController juego; //esto no lo estamos usando
     //public int jugadorActual = 0; //todas las acciones seran con el jugador 1.
 
@@ -26,6 +28,7 @@ public class UserInput : MonoBehaviour
             if (hit != null)
             {
                 Debug.Log("Carta: " + hit.name);
+                Debug.Log($"Padre: {hit.GetComponent<Seleccionable>().padre}");
             }
         }
 
@@ -67,174 +70,163 @@ public class UserInput : MonoBehaviour
         //-------------------------------------------------------------------------
         //cando soltamos el clic  (UNDER DEVELOPMENT)
         //-------------------------------------------------------------------------
-
-        if (Input.GetMouseButtonUp(0) && dragTransform != null) //aqui es donde deberiamos ver todas las reglas para cuando soltamos la carta
+        if(Input.GetMouseButtonUp(0) && dragTransform != null)
         {
-            Collider2D[] hits = Physics2D.OverlapPointAll(mouse); //este es un arreglo de colliders donde vemos todos los que estan bajo esa posicion
-            Collider2D destino = null; //creamos un collider 2d llamado "destino"
-
-            foreach (var h in hits) //con esto buscamos el collider que tenga el tag padre (osea que esta vacio el lugar) y hacemos que destino sea ese padre
+            var destino = PadreBajoMouse(mouse);
+            if (destino == null) //no soltamos en un padre valido (basicamente en un espacio vacio)
             {
-                if (h.CompareTag("padre"))
+                dragTransform.position = posicionInicial;
+                dragTransform = null;
+                return;
+            }
+
+            string nombreCarta = dragTransform.name;
+            string nombreDestino = destino.name;
+
+            //=====================================
+            //REGLAS PARA SOLTAR CARTAS
+            //=====================================
+
+            //*****************
+            //COMODINES
+            //*****************
+            if (nombreDestino == "Comodines")
+            {
+                if(nombreCarta.EndsWith("k")||nombreCarta.EndsWith("N")||nombreCarta.EndsWith("R"))
                 {
-                    destino = h;
-                    break;
+                    int order = SiguienteOrden(destino.transform);
+                    Apilar(dragTransform.gameObject, destino.transform, ref order, 0f); //el cero es porque no tenemos que moverlas hacia abajo, solo las apila.
+                }
+                else //vuelvo a posicion inicial
+                {
+                    dragTransform.position = posicionInicial;
+                    dragTransform = null;
+                    return;
                 }
             }
 
-            if (destino != null)
+            //*****************
+            //ESPACIOS (de jugador, descarte)   (Aqui estan relacionados los bugs: BUG.001, BUG.002)
+            //*****************
+            else if (nombreDestino.StartsWith("Espacio"))
             {
-                string idCarta = dragTransform.name;
-                string nombreDestino = destino.name;
-
-
-                if (nombreDestino == "Comodines")
+                if (nombreCarta.EndsWith("k") || nombreCarta.EndsWith("N") || nombreCarta.EndsWith("R") || nombreCarta.EndsWith("a"))
                 {
-                    if (idCarta.EndsWith("k") || idCarta.EndsWith("N") || idCarta.EndsWith("R"))
-                    {
-                        int cantidadHijos = 0;
-                        for (int i = 0; i < destino.transform.childCount; i++)
-                        {
-                            if (destino.transform.GetChild(i).CompareTag("carta"))
-                            {
-                                cantidadHijos++;
-                            }
-                        }
-
-                        dragTransform.SetParent(destino.transform, true); // hago que mi arrastre se convierta en hijo de la posicion destino.
-                        Vector3 posicionDestino = destino.transform.position; //destino sera copia de la posicion del padre
-                        posicionDestino.z = -0.03f * cantidadHijos; //aumentamos la posicion en z hacia arriba visualmente. 
-                        dragTransform.position = posicionDestino;
-                    }
-                    else
-                    {
-                        Debug.Log("No es un comodin");
-                        dragTransform.position = posicionInicial; //vuelve a pos inicial
-                    }
+                    //Debug.Log($"No se permite esta carta ({nombreCarta}) aqui");
+                    dragTransform.position = posicionInicial;
+                    dragTransform = null;
+                    return;
                 }
-
-                else if (nombreDestino.StartsWith("Espacio"))
+                else if (dragTransform.GetComponent<Seleccionable>().padre == "CMazo") //(BUG.006) Se agrego esta linea de codigo para no permitir su colocacion aqui. 
                 {
-                    if (!idCarta.EndsWith("k") && !idCarta.EndsWith("N") && !idCarta.EndsWith("R") && !idCarta.EndsWith("a"))
-                    {
-                        int cantidadHijos = 0;
-                        for (int i = 0; i < destino.transform.childCount; i++)
-                        {
-                            if (destino.transform.GetChild(i).CompareTag("carta"))
-                            {
-                                cantidadHijos++;
-                            }
-                        }
-
-                        dragTransform.SetParent(destino.transform, true);
-
-                        Vector3 posicionDestino = destino.transform.position + new Vector3(0f, -0.4f * cantidadHijos, 0f);
-                        posicionDestino.z = destino.transform.position.z + (-0.03f * cantidadHijos);
-
-
-                        //------------------------------------
-                        // Esto ultimo hace que se pongan las caratas sobre la posicion del padre, y se aplilan hacia abajo, perfecto,
-                        // pero ahora necesitamos que considere solo la posicion de la ultima carta, ya que esa sera la unica que se podra hacer clic o 
-                        // la unica donde se podra poner una carta encima. 
-                        //------------------------------
-
-
-                        dragTransform.position = posicionDestino;
-                        juego.TerminarTurno(); //con esto hacemos cambio de jugador y terminamos el turno, al terminar el otro jugador se rellena mi mano
-                    }
-                    else
-                    {
-                        Debug.Log("No es una carta valida (estas poniendo comodines o un as)");
-                        dragTransform.position = posicionInicial; //vuelve a pos inicial
-                    }
+                    //Debug.Log("Esta carta qla viene de la mano, no se puede colocar en espacio");
+                    dragTransform.position = posicionInicial;
+                    dragTransform = null;
+                    return;
                 }
-
-                else if (nombreDestino.StartsWith("Monton"))
-                {
-                    int numeroCarta = 0;
-                    int cantidadHijos = 0;
-                    //nombreUltimaCarta = "";
-
-                    if (true)
-                    {
-                        if (!idCarta.EndsWith("a") && !idCarta.EndsWith("k") && !idCarta.EndsWith("q") && !idCarta.EndsWith("j") && !idCarta.EndsWith("N") && !idCarta.EndsWith("R"))
-                        {
-                            //con esto paso el numero de la carta a entero
-                            numeroCarta = int.Parse(idCarta.Substring(idCarta.Length - 1));
-                        }
-                        else if (idCarta.EndsWith("0"))
-                        {
-                            numeroCarta = 10;
-                        }
-                        else if (idCarta.EndsWith("j"))
-                        {
-                            numeroCarta = 11;
-                        }
-                        else if (idCarta.EndsWith("q"))
-                        {
-                            numeroCarta = 12;
-                        }
-                    }
-
-                    for (int i = 0; i < destino.transform.childCount; i++)
-                    {
-                        if (destino.transform.GetChild(i).CompareTag("carta"))
-                        {
-                            //nombreUltimaCarta = destino.name;
-                            cantidadHijos++;
-                        }
-                    }
-
-                    if (idCarta.EndsWith("a") && cantidadHijos == 0)
-                    {
-                        Debug.Log("Carta termina con A");
-                        dragTransform.SetParent(destino.transform, true); // hago que mi arrastre se convierta en hijo de la posicion destino.
-                        Vector3 posicionDestino = destino.transform.position; //destino sera copia de la posicion del padre
-                        posicionDestino.z = -0.03f * cantidadHijos; //aumentamos la posicion en z hacia arriba visualmente. 
-                        dragTransform.position = posicionDestino;
-                    }
-                    else if (numeroCarta == cantidadHijos + 1)
-                    {
-                        Debug.Log("numero carta es igual a la cantidad hijos");
-                        dragTransform.SetParent(destino.transform, true); // hago que mi arrastre se convierta en hijo de la posicion destino.
-                        Vector3 posicionDestino = destino.transform.position; //destino sera copia de la posicion del padre
-                        posicionDestino.z = -0.03f * cantidadHijos; //aumentamos la posicion en z hacia arriba visualmente. 
-                        dragTransform.position = posicionDestino;
-                    }
-                    else if (idCarta.EndsWith("k") || idCarta.EndsWith("N") || idCarta.EndsWith("R"))
-                    {
-                        Debug.Log("la carta es un comodin");
-                        //if (nombreUltimaCarta.EndsWith("k")||nombreUltimaCarta.EndsWith("N") || nombreUltimaCarta.EndsWith("R")) //verificar si no hay otro comodin abajo
-                        //{
-                        //    Debug.Log("nombre de ultima carta es comodin, no se puede poner un comodin");                            
-                        //}
-                        //else
-                        //{
-                        //    Debug.Log("la ultima carta no es comodin asi que podemos usar un comodin");
-                        //    dragTransform.SetParent(destino.transform, true); // hago que mi arrastre se convierta en hijo de la posicion destino.
-                        //    Vector3 posicionDestino = destino.transform.position; //destino sera copia de la posicion del padre
-                        //    posicionDestino.z = -0.03f * cantidadHijos; //aumentamos la posicion en z hacia arriba visualmente. 
-                        //    dragTransform.position = posicionDestino;
-                        //}
-                    }
-                    else
-                    {
-                        Debug.Log("No es una carta valida (estas poniendo algo que no es AS o no cumple con los requisitos)");
-                        dragTransform.position = posicionInicial; //vuelve a pos inicial
-                    }
-                }
-
-
                 else
                 {
-                    dragTransform.position = posicionInicial; //vuelve a pos inicial
+                    int order = SiguienteOrden(destino.transform);
+                    Apilar(dragTransform.gameObject, destino.transform, ref order, separacionY);
+                    juego.TerminarTurno();
+                }
+            }
+
+            //*****************
+            //MONTONES (De mesa central)
+            //*****************
+            else if (nombreDestino.StartsWith("Monton"))
+            {
+                // Reglas:
+                // - Si esta vacio, solo un as puede iniciar
+                // - Si no está vacío, la carta debe coincidir con (cantidadHijos + 1).
+                // - Comodín se puede usar arriba salvo que el tope también sea comodín.
+
+                int cartasEnDestino = ContarCartas(destino.transform);
+                string nombreUltimaCarta = NombreUltimaCarta(destino.transform);
+
+                // Al colocar un AS
+                if(nombreCarta.EndsWith("a") && cartasEnDestino ==0)
+                {
+                    int order = SiguienteOrden(destino.transform);
+                    Apilar(dragTransform.gameObject, destino.transform, ref order, 0f);
                 }
 
+                // Al colocar un COMODIN
+                else if(nombreCarta.EndsWith("k") || nombreCarta.EndsWith("N") || nombreCarta.EndsWith("R"))
+                {
+                    //Si la ultima carta es un comodin o un J (para arreglar que ponga un comodin como Q) (BUG.003)
+                    if(nombreUltimaCarta.EndsWith("k") || nombreUltimaCarta.EndsWith("N") || nombreUltimaCarta.EndsWith("R")||nombreUltimaCarta.EndsWith("j"))
+                    {
+                        Debug.Log("No es posible colocar dos comodines seguidos o estas poniendo un comodin como Q");
+                        dragTransform.position = posicionInicial;
+                        dragTransform = null;
+                        return;
+                    }
+                    else if(cartasEnDestino == 0)
+                    {
+                        Debug.Log("No es posible un comodin como inicial");
+                        dragTransform.position = posicionInicial;
+                        dragTransform = null;
+                        return;
+                    }
+                    else
+                    {
+                        int order = SiguienteOrden(destino.transform);
+                        Apilar(dragTransform.gameObject, destino.transform, ref order, 0f);
+                    }
+                }
+
+                // Al colocar cualquier otra carta
+                else
+                {
+                    int valorCarta = ValorNumerico(nombreCarta);
+                    
+                    if(valorCarta == cartasEnDestino +1 && cartasEnDestino >0)
+                    {
+                        if(valorCarta==12)
+                        {
+                            int order = SiguienteOrden(destino.transform);
+                            Apilar(dragTransform.gameObject, destino.transform, ref order, 0f);
+
+                            int ordenDescarte = 0;
+                            while(destino.transform.childCount>0) //mientras mi Monton tenga cartas
+                            {
+                                Transform carta = destino.transform.GetChild(0); // agarro la primera carta
+                                if (carta.CompareTag("carta"))
+                                {
+                                    Debug.Log("Descartando monton");
+                                    Apilar(carta.gameObject,descartePos.transform, ref ordenDescarte, 0f);
+                                }
+                            }
+                        }
+                        else
+                        {
+                            int order = SiguienteOrden(destino.transform);
+                            Apilar(dragTransform.gameObject, destino.transform, ref order, 0f);
+                        }
+                            
+                    }
+                    else
+                    {
+                        Debug.Log("No es posible colocar esta carta (valor no valido)");
+                        dragTransform.position = posicionInicial;
+                        dragTransform = null;
+                        return;
+                    }
+                }
             }
+
             else
             {
-                dragTransform.position = posicionInicial; //vuelve a pos inicial 
+                // otros
+                Debug.Log("Lugar no reconocido");
+                dragTransform.position = posicionInicial;
+                dragTransform = null;
+                return;
             }
+
+            // listo
             dragTransform = null;
         }
     }
@@ -258,5 +250,108 @@ public class UserInput : MonoBehaviour
             }
         }
         return top;
+    }
+
+    private Collider2D PadreBajoMouse(Vector3 mouse)
+    {
+        Collider2D[] hits = Physics2D.OverlapPointAll(mouse);
+        Collider2D padreCollider = null;
+        int mejorOrden = int.MinValue; //le ponemos el valor mas bajo para un entero (simplemente para no poner -1)  
+
+        foreach (Collider2D h in hits)
+        {
+            if (h == null || !h.CompareTag("padre")) continue; //si entre todos los collider que detecta no hay ninguno con tag "padre", entonces dejara padrecollider como null
+            var sr = h.GetComponent<SpriteRenderer>(); //esto es para tener informacion de su sortingOrder
+            int orden = sr ? sr.sortingOrder : 0; //basicamente aqui digo que orden toma el valor de sr.sortingOrder, si no encuentra ningun sprite render, lo coloca como 0
+            if (orden >= mejorOrden)
+            {
+                mejorOrden = orden;
+                padreCollider = h; //con esto cada vez que el orden sea mayor al mejorOrden encontrado, guardaremos el collider como si fuera Top.
+            }
+        }
+        return padreCollider;        
+    }
+
+    private int SiguienteOrden(Transform ancla) //con este metodo podemos ver el ancla que necesitemos revisar
+                                                //y entregamos de vuelta el orden que deberia tener la carta que se quiere poner
+    {
+        int max = 0;
+        for (int i = 0; i < ancla.childCount; i++) //hago una revision por todos los hijos del ancla
+        {
+            max = ancla.GetChild(i).GetComponent<SpriteRenderer>().sortingOrder;
+        }
+        return max += 1;
+    }
+    private void Apilar(GameObject carta, Transform ancla, ref int orderCursor, float sepY) //metodo llegado y copiado (NO REVISADO)
+    {
+        if (!carta || !ancla) return;
+
+        // índice visible = cuántas cartas tiene ya el ancla
+        int indice = 0;
+        for (int i = 0; i < ancla.childCount; i++)
+            if (ancla.GetChild(i).CompareTag("carta")) indice++;
+
+        var pos = ancla.position + new Vector3(0f, -sepY * indice, 0f);
+        pos.z = carta.transform.position.z; // z se mantiene
+
+        carta.transform.position = pos;
+        carta.transform.SetParent(ancla, true);
+
+        var sr = carta.GetComponent<SpriteRenderer>();
+        if (sr)
+        {
+            sr.sortingOrder = orderCursor++;
+            var srAncla = ancla.GetComponent<SpriteRenderer>();
+            if (srAncla) sr.sortingLayerID = srAncla.sortingLayerID; // hereda layer del ancla (opcional)
+        }
+
+        var sel = carta.GetComponent<Seleccionable>();
+        if (sel) sel.faceUp = true;
+    }
+
+    private int ContarCartas(Transform ancla)
+    {
+        int cartas = 0;
+        for (int i = 0;i < ancla.childCount;i++)
+        {
+            if (ancla.GetChild(i).CompareTag("carta")) {  cartas++; }
+        }
+        return cartas;
+    }
+
+    private string NombreUltimaCarta(Transform ancla)
+    {
+        GameObject ultimaCarta = null;
+        int mejorOrder = int.MinValue;
+
+        for (int i = 0; i < ancla.childCount; i++)
+        {
+            var cartaActual = ancla.GetChild(i);
+            if (!cartaActual.CompareTag("carta")) continue; // si es el padre lo saltamos
+            var sr = cartaActual.GetComponent<SpriteRenderer>(); //esto es para tener informacion de su sortingOrder
+            int orden = sr ? sr.sortingOrder : 0; //basicamente aqui digo que orden toma el valor de sr.sortingOrder, si no encuentra ningun sprite render, lo coloca como 0
+            if (orden >= mejorOrder)
+            {
+                mejorOrder = orden;
+                ultimaCarta = cartaActual.gameObject; //con esto cada vez que el orden sea mayor al mejorOrden encontrado, guardaremos el gameobject como si fuera la ultima carta.
+            }
+        }
+        return ultimaCarta ? ultimaCarta.name : "";
+    }
+
+    private int ValorNumerico(string nombre)
+    {
+        if (nombre.EndsWith("2")) return 2;
+        if (nombre.EndsWith("3")) return 3;
+        if (nombre.EndsWith("4")) return 4;
+        if (nombre.EndsWith("5")) return 5;
+        if (nombre.EndsWith("6")) return 6;
+        if (nombre.EndsWith("7")) return 7;
+        if (nombre.EndsWith("8")) return 8;
+        if (nombre.EndsWith("9")) return 9;
+        if (nombre.EndsWith("0")) return 10;
+        if (nombre.EndsWith("j")) return 11;
+        if (nombre.EndsWith("q")) return 12;
+        return -1; //para otros casos
     }
 }

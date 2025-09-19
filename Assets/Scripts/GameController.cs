@@ -56,7 +56,6 @@ public class GameController : MonoBehaviour
         mazosJugadores = new List<string>[] { mazoJ1, mazoJ2, mazoJ3, mazoJ4, };
         manosJugadores = new List<string>[] { manoJ1, manoJ2, manoJ3, manoJ4, };
         manosPos = new GameObject[][] { manoJ1Pos, manoJ2Pos, manoJ3Pos, manoJ4Pos };
-
         IniciarJuego();        
     }
 
@@ -78,7 +77,8 @@ public class GameController : MonoBehaviour
         int decks = 3;
         if (cantidadDeJugadores < 4) //si es 4 entonces va a generar 3 decks
         {
-            decks = 2;
+            //decks = 2;
+            decks = 1; //SOLO PARA USO DE DEBUGEOOOOO BORRAR DESPUES 
         }
         for (int d = 0; d < decks; d++)
         {
@@ -112,9 +112,10 @@ public class GameController : MonoBehaviour
 
     private void RepartirJugadores()
     {
+        int cantidadaARepartir = 15; //COLOCAR EN 20 PARA JUEGO OFICIAL
         for (int i = 0; i < cantidadDeJugadores; i++)
         {
-            for (int j = 0; j < 20; j++) //con esto reparto 20 cartas a cada jugador segun la cantidad de jugadore
+            for (int j = 0; j < cantidadaARepartir; j++) //con esto reparto 20 cartas a cada jugador segun la cantidad de jugadore
             {
                 mazosJugadores[i].Add(mazoCentral.Last<string>());
                 mazoCentral.RemoveAt(mazoCentral.Count - 1);
@@ -196,6 +197,66 @@ public class GameController : MonoBehaviour
         sr.sortingLayerID = ancla.GetComponent<SpriteRenderer>().sortingLayerID; //esto no se si esta haciendo mucho... ELIMINAR O COMENTAR MAS ADELANTE
     }
 
+    public bool RellenarMazoCentral()
+    {
+        if (descartePos == null || mazoCentralPos == null) return false;
+
+        // 1) Recolectar TODAS las cartas actualmente en descarte
+        var cartas = new List<Transform>();
+        for (int i = 0; i < descartePos.transform.childCount; i++)
+        {
+            Transform ch = descartePos.transform.GetChild(i);
+            if (ch.CompareTag("carta")) cartas.Add(ch);
+        }
+        if (cartas.Count == 0)
+        {
+            Debug.Log("No hay cartas en Descarte");
+            return false; // nada que rellene desde el descarte
+        }
+
+        // 2) Mezclar (Fisher–Yates)
+        System.Random rng = new System.Random(System.Environment.TickCount ^ GetInstanceID());
+        for (int i = cartas.Count - 1; i > 0; i--)
+        {
+            int j = rng.Next(i + 1);
+            var tmp = cartas[i];
+            cartas[i] = cartas[j];
+            cartas[j] = tmp;
+        }
+
+        // 3) Mover al mazo central con orden desde 0
+        var srPadre = mazoCentralPos.GetComponent<SpriteRenderer>();
+        int order = 1; //para que parta en la primera capa (BUG.005 antes estaba en order = 0)
+
+        for (int i = 0; i < cartas.Count; i++)
+        {
+            Transform c = cartas[i];
+
+            // parent y posicion
+            c.SetParent(mazoCentralPos.transform, true);
+            Vector3 p = mazoCentralPos.transform.position;
+            p.z = c.position.z; // da igual si usas sortingOrder, pero lo conservamos
+            c.position = p;
+
+            // boca abajo y marcar padre
+            var sel = c.GetComponent<Seleccionable>();
+            if (sel != null)
+            {
+                sel.faceUp = false;
+                sel.setPadre("CMazoCentral");
+            }
+
+            // sorting arriba del mazo (0..N-1)
+            var sr = c.GetComponent<SpriteRenderer>();
+            if (sr != null)
+            {
+                if (srPadre != null) sr.sortingLayerID = srPadre.sortingLayerID;
+                sr.sortingOrder = order++;
+            }
+        }
+        return true;
+    }
+
     public void TerminarTurno()
     {
         SiguienteJugador(jugadorActual); //cambiar al siguiente jugador
@@ -220,8 +281,13 @@ public class GameController : MonoBehaviour
                 if (cartaTop == null)
                 {
                     Debug.Log("No hay mas cartas en el mazo central");
-                    //METODO PARA HACER EL PROCESO DE METER LAS CARTAS DEL DESCARTE NUEVAMENTE EN EL MAZO CENTRAL. 
-                    continue; //COMENTAR esta linea cuando hagamos el metodo anterior. 
+                    if(!RellenarMazoCentral())
+                    {
+                        Debug.Log("Tampoco hay cartas en el descarte. Se corta el relleno");
+                        //GAMEOVER!!!!
+                        break;
+                    }
+                    continue; //continuamos con el procedimiento...
                 }
 
                 // Si la carta top es un comodin
