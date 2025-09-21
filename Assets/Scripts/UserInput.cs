@@ -7,8 +7,11 @@ public class UserInput : MonoBehaviour
     Transform dragTransform;
     Vector3 dragOffset;
     Vector3 posicionInicial;
+    Vector3 scaleOriginal;
+    private int orderOriginal;
     public GameObject descartePos;
-    //string nombreUltimaCarta = "";
+    private int sorterOrdenArrastre = 100;
+    private float scaleHover = 1.2f;
 
     public float separacionY = 0.22f; //esto es para mover las cartas hacia abajo cuado las montemos
     public GameController juego; //esto no lo estamos usando
@@ -18,7 +21,7 @@ public class UserInput : MonoBehaviour
     {
         Vector3 mouse = Camera.main.ScreenToWorldPoint(Input.mousePosition);
         mouse.z = 0f;
-
+        
         //-------------------------------------------------------------------------
         // Debug clic derecho
         //-------------------------------------------------------------------------
@@ -29,6 +32,7 @@ public class UserInput : MonoBehaviour
             {
                 Debug.Log("Carta: " + hit.name);
                 Debug.Log($"Padre: {hit.GetComponent<Seleccionable>().padre}");
+                //Debug.Log($"Father: {PadreBajoMouse(mouse)}");
             }
         }
 
@@ -37,11 +41,12 @@ public class UserInput : MonoBehaviour
         //-------------------------------------------------------------------------
         if (Input.GetMouseButtonDown(0))
         {
+            //string cartaPadre = PadreBajoMouse(mouse).name;
             var hitCarta = TopCartaBajoMouse(mouse); //el metodo nos retorna un gameobject de donde esta el mouse, y nos da la carta de mas arriba.
             if (hitCarta != null) //si le hicimos clic a una carta
             {
                 var sel=hitCarta.GetComponent<Seleccionable>();
-                if (sel != null&&sel.padre == "CMazo" && sel.faceUp == false) //si es un objeto del mazo jugador y boca abajo, entonces la damos vuelta
+                if (sel != null && sel.padre == "CMazo" && sel.faceUp == false) //si es un objeto del mazo jugador y boca abajo, entonces la damos vuelta
                 {
                     sel.faceUp = true;
                     dragTransform = null;
@@ -49,11 +54,13 @@ public class UserInput : MonoBehaviour
                 }
 
                 //sino, solo la arrastramos (aplica para todas las cartas, menos las del mazo central). 
-                else if(sel.padre!="CMazoCentral")
+                else if (sel.padre != "CMazoCentral" && sel.padre != "CMonton") //Y las cartas del monton (ya no se pueden mover) (BUG.007)
                 {
                     dragTransform = hitCarta.transform;
                     posicionInicial = dragTransform.position;
+                    scaleOriginal = dragTransform.localScale;
                     dragOffset = dragTransform.position - mouse;
+                    orderOriginal = dragTransform.GetComponent<SpriteRenderer>().sortingOrder;   
                 }
             }
 
@@ -65,6 +72,8 @@ public class UserInput : MonoBehaviour
         if (Input.GetMouseButton(0) && dragTransform != null) //Con este metodo hacemos que cuando este presionado, lleve la carta pegada al mouse
         {
             dragTransform.position = mouse + dragOffset;
+            dragTransform.localScale = scaleOriginal * scaleHover; //aumentamos un poco el tamaño de la carta al arrastrar
+            dragTransform.GetComponent<SpriteRenderer>().sortingOrder = orderOriginal + sorterOrdenArrastre; //aumentamos su sorter order para que se vea sobre todas las cartas del tablero
         }
 
         //-------------------------------------------------------------------------
@@ -76,6 +85,7 @@ public class UserInput : MonoBehaviour
             if (destino == null) //no soltamos en un padre valido (basicamente en un espacio vacio)
             {
                 dragTransform.position = posicionInicial;
+                dragTransform.localScale=scaleOriginal;
                 dragTransform = null;
                 return;
             }
@@ -92,14 +102,18 @@ public class UserInput : MonoBehaviour
             //*****************
             if (nombreDestino == "Comodines")
             {
-                if(nombreCarta.EndsWith("k")||nombreCarta.EndsWith("N")||nombreCarta.EndsWith("R"))
+                dragTransform.localScale = scaleOriginal;
+                dragTransform.GetComponent<SpriteRenderer>().sortingOrder = orderOriginal; //creo que es innecesario pero lo dejare para evitar problemas
+                if (nombreCarta.EndsWith("k")||nombreCarta.EndsWith("N")||nombreCarta.EndsWith("R"))
                 {
                     int order = SiguienteOrden(destino.transform);
                     Apilar(dragTransform.gameObject, destino.transform, ref order, 0f); //el cero es porque no tenemos que moverlas hacia abajo, solo las apila.
+                    VerificarMano();
                 }
                 else //vuelvo a posicion inicial
                 {
                     dragTransform.position = posicionInicial;
+                    //dragTransform.localScale = scaleOriginal;
                     dragTransform = null;
                     return;
                 }
@@ -110,17 +124,21 @@ public class UserInput : MonoBehaviour
             //*****************
             else if (nombreDestino.StartsWith("Espacio"))
             {
+                dragTransform.localScale = scaleOriginal;
+                dragTransform.GetComponent<SpriteRenderer>().sortingOrder = orderOriginal; //creo que es innecesario pero lo dejare para evitar problemas
                 if (nombreCarta.EndsWith("k") || nombreCarta.EndsWith("N") || nombreCarta.EndsWith("R") || nombreCarta.EndsWith("a"))
                 {
                     //Debug.Log($"No se permite esta carta ({nombreCarta}) aqui");
                     dragTransform.position = posicionInicial;
+                    //dragTransform.localScale = scaleOriginal;
                     dragTransform = null;
                     return;
                 }
                 else if (dragTransform.GetComponent<Seleccionable>().padre == "CMazo") //(BUG.006) Se agrego esta linea de codigo para no permitir su colocacion aqui. 
                 {
-                    //Debug.Log("Esta carta qla viene de la mano, no se puede colocar en espacio");
+                    //Debug.Log("Esta carta qla viene del mazo jugador, no se puede colocar en espacio");
                     dragTransform.position = posicionInicial;
+                    //dragTransform.localScale = scaleOriginal;
                     dragTransform = null;
                     return;
                 }
@@ -141,6 +159,8 @@ public class UserInput : MonoBehaviour
                 // - Si esta vacio, solo un as puede iniciar
                 // - Si no está vacío, la carta debe coincidir con (cantidadHijos + 1).
                 // - Comodín se puede usar arriba salvo que el tope también sea comodín.
+                dragTransform.localScale = scaleOriginal;
+                dragTransform.GetComponent<SpriteRenderer>().sortingOrder = orderOriginal; //creo que es innecesario pero lo dejare para evitar problemas
 
                 int cartasEnDestino = ContarCartas(destino.transform);
                 string nombreUltimaCarta = NombreUltimaCarta(destino.transform);
@@ -150,6 +170,7 @@ public class UserInput : MonoBehaviour
                 {
                     int order = SiguienteOrden(destino.transform);
                     Apilar(dragTransform.gameObject, destino.transform, ref order, 0f);
+                    VerificarMano();
                 }
 
                 // Al colocar un COMODIN
@@ -160,6 +181,7 @@ public class UserInput : MonoBehaviour
                     {
                         Debug.Log("No es posible colocar dos comodines seguidos o estas poniendo un comodin como Q");
                         dragTransform.position = posicionInicial;
+                        //dragTransform.localScale = scaleOriginal;
                         dragTransform = null;
                         return;
                     }
@@ -167,6 +189,7 @@ public class UserInput : MonoBehaviour
                     {
                         Debug.Log("No es posible un comodin como inicial");
                         dragTransform.position = posicionInicial;
+                        //dragTransform.localScale = scaleOriginal;
                         dragTransform = null;
                         return;
                     }
@@ -174,12 +197,15 @@ public class UserInput : MonoBehaviour
                     {
                         int order = SiguienteOrden(destino.transform);
                         Apilar(dragTransform.gameObject, destino.transform, ref order, 0f);
+                        VerificarMano();
                     }
                 }
 
                 // Al colocar cualquier otra carta
                 else
                 {
+                    dragTransform.localScale = scaleOriginal;
+                    dragTransform.GetComponent<SpriteRenderer>().sortingOrder = orderOriginal; //creo que es innecesario pero lo dejare para evitar problemas
                     int valorCarta = ValorNumerico(nombreCarta);
                     
                     if(valorCarta == cartasEnDestino +1 && cartasEnDestino >0)
@@ -188,6 +214,7 @@ public class UserInput : MonoBehaviour
                         {
                             int order = SiguienteOrden(destino.transform);
                             Apilar(dragTransform.gameObject, destino.transform, ref order, 0f);
+                            VerificarMano();
 
                             int ordenDescarte = 0;
                             while(destino.transform.childCount>0) //mientras mi Monton tenga cartas
@@ -204,17 +231,20 @@ public class UserInput : MonoBehaviour
                         {
                             int order = SiguienteOrden(destino.transform);
                             Apilar(dragTransform.gameObject, destino.transform, ref order, 0f);
+                            VerificarMano();
                         }
-                            
+
                     }
                     else
                     {
                         Debug.Log("No es posible colocar esta carta (valor no valido)");
                         dragTransform.position = posicionInicial;
+                        //dragTransform.localScale = scaleOriginal;
                         dragTransform = null;
                         return;
                     }
                 }
+                dragTransform.GetComponent<Seleccionable>().padre = "CMonton"; //parte del BUG.007
             }
 
             else
@@ -222,6 +252,8 @@ public class UserInput : MonoBehaviour
                 // otros
                 Debug.Log("Lugar no reconocido");
                 dragTransform.position = posicionInicial;
+                dragTransform.localScale = scaleOriginal;
+                dragTransform.GetComponent<SpriteRenderer>().sortingOrder = orderOriginal; //creo que es innecesario pero lo dejare para evitar problemas
                 dragTransform = null;
                 return;
             }
@@ -353,5 +385,13 @@ public class UserInput : MonoBehaviour
         if (nombre.EndsWith("j")) return 11;
         if (nombre.EndsWith("q")) return 12;
         return -1; //para otros casos
+    }
+
+    private void VerificarMano() //BUG.009
+    {
+        if (juego.cantidadCartasMano-1 <= 0) //colocar en cero para el juego original.
+        {
+            juego.TerminarTurno();
+        }
     }
 }

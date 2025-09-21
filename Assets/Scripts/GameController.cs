@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using TMPro;
 using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -16,6 +17,7 @@ public class GameController : MonoBehaviour
     public List<string> mazoCentral;
     public float zOffset = 0.03f;
     public float segundos = 0.03f;
+    public int cantidadCartasMano = 6;
 
     //-------------------------------------------------------------------------------------------------------------------
     //POSICIONES DE LOS GO (LOS BORDES)
@@ -49,7 +51,8 @@ public class GameController : MonoBehaviour
     public List<string> manoJ2 = new List<string>();
     public List<string> manoJ3 = new List<string>();
     public List<string> manoJ4 = new List<string>();
-
+    public TextMeshPro textoJugadorActual;
+    //public TextMeshPro textoComodinRemplazaM1;
 
     void Start()
     {
@@ -57,6 +60,12 @@ public class GameController : MonoBehaviour
         manosJugadores = new List<string>[] { manoJ1, manoJ2, manoJ3, manoJ4, };
         manosPos = new GameObject[][] { manoJ1Pos, manoJ2Pos, manoJ3Pos, manoJ4Pos };
         IniciarJuego();        
+    }
+
+    private void Update()
+    {
+        textoJugadorActual.text = "Jugador Actual: J" + (jugadorActual+1).ToString();
+        cantidadCartasMano = ContarCartasMano();    
     }
 
     public void IniciarJuego()
@@ -77,8 +86,8 @@ public class GameController : MonoBehaviour
         int decks = 3;
         if (cantidadDeJugadores < 4) //si es 4 entonces va a generar 3 decks
         {
-            //decks = 2;
-            decks = 1; //SOLO PARA USO DE DEBUGEOOOOO BORRAR DESPUES 
+            decks = 2;
+            //decks = 1; //SOLO PARA USO DE DEBUGEOOOOO BORRAR DESPUES 
         }
         for (int d = 0; d < decks; d++)
         {
@@ -112,7 +121,7 @@ public class GameController : MonoBehaviour
 
     private void RepartirJugadores()
     {
-        int cantidadaARepartir = 15; //COLOCAR EN 20 PARA JUEGO OFICIAL
+        int cantidadaARepartir = 20; //COLOCAR EN 20 PARA JUEGO OFICIAL
         for (int i = 0; i < cantidadDeJugadores; i++)
         {
             for (int j = 0; j < cantidadaARepartir; j++) //con esto reparto 20 cartas a cada jugador segun la cantidad de jugadore
@@ -265,8 +274,10 @@ public class GameController : MonoBehaviour
 
     public void CompletarMano()
     {
+        //Debug.Log("Se inicia Completado de mano");
         for (int i = 0;i<6;i++) //recorremos los 6 slots de la mano del jugadorActual
         {
+            //Debug.Log($"Revision de mano{i}");
             //int sortingOrder = 0;
             Transform slot = manosPos[jugadorActual][i].transform; //establecemos slot como una transform de la posicion de la mano del jugador actual (recorriendo todos sus slots)
 
@@ -277,9 +288,12 @@ public class GameController : MonoBehaviour
             //si son comodines, no nos saca de este slot
             while (SlotEstaVacio(slot)) 
             {
+                //Debug.Log($"SlotEstaVacio es {SlotEstaVacio(slot)}, por ende entramos al while");
                 GameObject cartaTop = TomarTopMazoCentral();
+                //Debug.Log($"cartaTop = {cartaTop}");
                 if (cartaTop == null)
                 {
+                    //Debug.Log($"Entramos a cartaTop igual a Null");
                     Debug.Log("No hay mas cartas en el mazo central");
                     if(!RellenarMazoCentral())
                     {
@@ -293,13 +307,15 @@ public class GameController : MonoBehaviour
                 // Si la carta top es un comodin
                 if(cartaTop.name.EndsWith("k")|| cartaTop.name.EndsWith("R")|| cartaTop.name.EndsWith("N"))
                 {
+                    //Debug.Log($"La carta top es comodin, por ende entregamos en espacios comodines");
                     int comodinOrder = SiguienteOrden(comodinesJugadoresPos[jugadorActual].transform);
                     cartaTop.GetComponent<Seleccionable>().faceUp = true; //primero damos vuelta su cara y luego la posicionamos
                     cartaTop.GetComponent<Seleccionable>().setPadre("CComodin"); //aun no se si el padre implica algo, el nombre... quizas borrar (REVISAR)
                     ApilarEnAncla(cartaTop, comodinesJugadoresPos[jugadorActual].transform, ref comodinOrder); //NO SE SI ESTO FUNCIONARA! DEBUGEAR.
                     continue;
                 }
-                
+
+                //Debug.Log($"la carta top es entregada al slot {i}");
                 int slotOrder = SiguienteOrden(slot);
                 cartaTop.GetComponent<Seleccionable>().faceUp = true; //primero damos vuelta su cara y luego la posicionamos
                 cartaTop.GetComponent<Seleccionable>().setPadre("CMano"); //aun no se si el padre implica algo, el nombre... quizas borrar (REVISAR)
@@ -320,25 +336,67 @@ public class GameController : MonoBehaviour
         return max += 1;
     }
 
-    private GameObject TomarTopMazoCentral()
-    {
-        Collider2D[] hits = Physics2D.OverlapPointAll(mazoCentralPos.transform.position);
-        GameObject top = null;
-        int mejorOrden = int.MinValue; //le ponemos el valor mas bajo para un entero (simplemente para no poner -1)  
+    //private GameObject TomarTopMazoCentral()
+    //{
+    //    Debug.Log($"Iniciamos TomarTopMazoCentral");
+    //    Collider2D[] hits = Physics2D.OverlapPointAll(mazoCentralPos.transform.position);
+    //    GameObject top = null;
+    //    Debug.Log($"Top aqui deberia estar NULL: {top}");
+    //    int mejorOrden = int.MinValue; //le ponemos el valor mas bajo para un entero (simplemente para no poner -1)  
 
-        foreach(Collider2D h in hits)
+    //    foreach(Collider2D h in hits)
+    //    {
+    //        if (h == null || !h.CompareTag("carta")) continue; //si entre todos los collider que detecta no hay ninguno con tag "carta", entonces dejara top como null
+    //        var sr = h.GetComponent<SpriteRenderer>(); //esto es para tener informacion de su sortingOrder
+
+    //        //esta mierda me esta dando errores al final del repartijo de cartas...
+    //        int orden = sr ? sr.sortingOrder : 0; //basicamente aqui digo que orden toma el valor de sr.sortingOrder, si no encuentra ningun sprite render, lo coloca como 0
+    //        //fin de la cosa rara
+
+    //        Debug.Log($"orden es {orden}, mejorOrden es {mejorOrden}");
+    //        if (orden >= mejorOrden)
+    //        {
+    //            Debug.Log($"Top al entrar es {top}");
+    //            Debug.Log($"orden es mayor o igual a mejor orden");
+    //            mejorOrden = orden;
+    //            Debug.Log($"mejorOrden ahora es ={orden}");
+    //            top = h.gameObject; //con esto cada vez que el orden sea mayor al mejorOrden encontrado, guardaremos el collider como si fuera Top.
+    //            Debug.Log($"top es {top}");
+    //        }
+    //    }
+    //    Debug.Log($"devuelve top = {top}");
+    //    return top;
+    //}
+
+    private GameObject TomarTopMazoCentral() //este metodo arreglo el (BUG.004)
+    {
+        Vector2 centro = mazoCentralPos.transform.position;
+        float radio = 0.2f; // ajusta al tamaño de tus cartas
+
+        var hits = Physics2D.OverlapCircleAll(centro, radio);
+
+        GameObject top = null;
+        int mejorOrden = int.MinValue;
+
+        foreach (var h in hits)
         {
-            if (h == null || !h.CompareTag("carta")) continue; //si entre todos los collider que detecta no hay ninguno con tag "carta", entonces dejara top como null
-            var sr = h.GetComponent<SpriteRenderer>(); //esto es para tener informacion de su sortingOrder
-            int orden = sr ? sr.sortingOrder : 0; //basicamente aqui digo que orden toma el valor de sr.sortingOrder, si no encuentra ningun sprite render, lo coloca como 0
+            if (h == null || !h.CompareTag("carta")) continue;
+
+            var sel = h.GetComponent<Seleccionable>();
+            if (sel == null || sel.padre != "CMazoCentral") continue; // <- clave
+
+            var sr = h.GetComponent<SpriteRenderer>();
+            int orden = (sr != null) ? sr.sortingOrder : 0;
+
             if (orden >= mejorOrden)
             {
                 mejorOrden = orden;
-                top = h.gameObject; //con esto cada vez que el orden sea mayor al mejorOrden encontrado, guardaremos el collider como si fuera Top.
+                top = h.gameObject;
             }
         }
         return top;
     }
+
 
     private bool SlotEstaVacio(Transform slotito) //si el slot esta vacio devuelve True. 
     {
@@ -368,5 +426,20 @@ public class GameController : MonoBehaviour
         manoJ2.Clear();
         manoJ3.Clear();
         manoJ4.Clear();
+    }
+
+    private int ContarCartasMano() //BUG.009
+    {
+        int total = 0;
+        foreach(var slot in manosPos[jugadorActual])
+        {
+            //if(slotGO ==null) continue;
+
+            if (slot.transform.childCount > 0 && slot.transform.GetChild(slot.transform.childCount - 1).CompareTag("carta"))
+            {
+                total++;
+            }
+        }
+        return total;
     }
 }
