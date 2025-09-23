@@ -1,3 +1,5 @@
+using System.Linq;
+using System.Net;
 using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -41,6 +43,7 @@ public class UserInput : MonoBehaviour
         //-------------------------------------------------------------------------
         if (Input.GetMouseButtonDown(0))
         {
+
             //string cartaPadre = PadreBajoMouse(mouse).name;
             var hitCarta = TopCartaBajoMouse(mouse); //el metodo nos retorna un gameobject de donde esta el mouse, y nos da la carta de mas arriba.
             if (hitCarta != null) //si le hicimos clic a una carta
@@ -56,12 +59,37 @@ public class UserInput : MonoBehaviour
                 //sino, solo la arrastramos (aplica para todas las cartas, menos las del mazo central). 
                 else if (sel.padre != "CMazoCentral" && sel.padre != "CMonton") //Y las cartas del monton (ya no se pueden mover) (BUG.007)
                 {
-                    dragTransform = hitCarta.transform;
-                    posicionInicial = dragTransform.position;
-                    scaleOriginal = dragTransform.localScale;
-                    dragOffset = dragTransform.position - mouse;
-                    orderOriginal = dragTransform.GetComponent<SpriteRenderer>().sortingOrder;   
+                    if(sel.padre=="CEspacio")
+                    {
+                        //Debug.Log("estoy tomando una carta desde el espacio");
+                        //Debug.Log($"sortin order: {sel.GetComponent<SpriteRenderer>().sortingOrder}; contar cartas: {ContarCartas(PadreBajoMouse(mouse).transform)}");
+                        if(sel.GetComponent<SpriteRenderer>().sortingOrder == ContarCartas(PadreBajoMouse(mouse).transform)) // BUG.002
+                        {
+                            Debug.Log("esta carta es la de arriba");
+                            dragTransform = hitCarta.transform;
+                            posicionInicial = dragTransform.position;
+                            scaleOriginal = dragTransform.localScale;
+                            dragOffset = dragTransform.position - mouse;
+                            orderOriginal = dragTransform.GetComponent<SpriteRenderer>().sortingOrder;
+                        }
+                        else
+                        {
+                            Debug.Log("esta cata no es la de mas arriba, no la puedes mover");
+                        }
+
+                    }
+                    else // todo los otros lugares para tomar cartas
+                    {
+                        //Debug.Log("estoy tomando otra carta que no es del espacio");
+                        dragTransform = hitCarta.transform;
+                        posicionInicial = dragTransform.position;
+                        scaleOriginal = dragTransform.localScale;
+                        dragOffset = dragTransform.position - mouse;
+                        orderOriginal = dragTransform.GetComponent<SpriteRenderer>().sortingOrder;
+                    }
+                          
                 }
+                
             }
 
         }
@@ -113,14 +141,14 @@ public class UserInput : MonoBehaviour
                 else //vuelvo a posicion inicial
                 {
                     dragTransform.position = posicionInicial;
-                    //dragTransform.localScale = scaleOriginal;
                     dragTransform = null;
                     return;
                 }
+                dragTransform.GetComponent<Seleccionable>().padre = "CComodin";
             }
 
             //*****************
-            //ESPACIOS (de jugador, descarte)   (Aqui estan relacionados los bugs: BUG.001, BUG.002)
+            //ESPACIOS (de jugador, descarte)   (Aqui esta relacionado el bug: BUG.001, creo)
             //*****************
             else if (nombreDestino.StartsWith("Espacio"))
             {
@@ -130,7 +158,6 @@ public class UserInput : MonoBehaviour
                 {
                     //Debug.Log($"No se permite esta carta ({nombreCarta}) aqui");
                     dragTransform.position = posicionInicial;
-                    //dragTransform.localScale = scaleOriginal;
                     dragTransform = null;
                     return;
                 }
@@ -138,7 +165,6 @@ public class UserInput : MonoBehaviour
                 {
                     //Debug.Log("Esta carta qla viene del mazo jugador, no se puede colocar en espacio");
                     dragTransform.position = posicionInicial;
-                    //dragTransform.localScale = scaleOriginal;
                     dragTransform = null;
                     return;
                 }
@@ -148,6 +174,7 @@ public class UserInput : MonoBehaviour
                     Apilar(dragTransform.gameObject, destino.transform, ref order, separacionY);
                     juego.TerminarTurno();
                 }
+                dragTransform.GetComponent<Seleccionable>().padre = "CEspacio";
             }
 
             //*****************
@@ -181,7 +208,6 @@ public class UserInput : MonoBehaviour
                     {
                         Debug.Log("No es posible colocar dos comodines seguidos o estas poniendo un comodin como Q");
                         dragTransform.position = posicionInicial;
-                        //dragTransform.localScale = scaleOriginal;
                         dragTransform = null;
                         return;
                     }
@@ -189,7 +215,6 @@ public class UserInput : MonoBehaviour
                     {
                         Debug.Log("No es posible un comodin como inicial");
                         dragTransform.position = posicionInicial;
-                        //dragTransform.localScale = scaleOriginal;
                         dragTransform = null;
                         return;
                     }
@@ -197,7 +222,7 @@ public class UserInput : MonoBehaviour
                     {
                         int order = SiguienteOrden(destino.transform);
                         Apilar(dragTransform.gameObject, destino.transform, ref order, 0f);
-                        VerificarMano();
+                        VerificarMano();                        
                     }
                 }
 
@@ -389,6 +414,7 @@ public class UserInput : MonoBehaviour
 
     private void VerificarMano() //BUG.009
     {
+        Debug.Log($"Verificando Mano: {juego.cantidadCartasMano - 1}");
         if (juego.cantidadCartasMano-1 <= 0) //colocar en cero para el juego original.
         {
             juego.TerminarTurno();

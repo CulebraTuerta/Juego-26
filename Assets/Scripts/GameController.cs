@@ -65,7 +65,8 @@ public class GameController : MonoBehaviour
     private void Update()
     {
         textoJugadorActual.text = "Jugador Actual: J" + (jugadorActual+1).ToString();
-        cantidadCartasMano = ContarCartasMano();    
+        cantidadCartasMano = ContarCartasMano();
+        VerificarMazoCentral();
     }
 
     public void IniciarJuego()
@@ -208,6 +209,7 @@ public class GameController : MonoBehaviour
 
     public bool RellenarMazoCentral()
     {
+        Debug.Log("Rellenando Mazo Central");
         if (descartePos == null || mazoCentralPos == null) return false;
 
         // 1) Recolectar TODAS las cartas actualmente en descarte
@@ -441,5 +443,15 @@ public class GameController : MonoBehaviour
             }
         }
         return total;
+    }
+
+    private void VerificarMazoCentral()  //BUG.008 
+    {
+        //si el mazo central queda vacio, entonces rellenamos
+        if(mazoCentralPos.transform.childCount == 0)
+        {
+            Debug.Log($"Mazo central vacio, cartas: {mazoCentralPos.transform.childCount}");
+            RellenarMazoCentral();
+        }
     }
 }
