@@ -985,7 +985,7 @@ GameObject:
   - component: {fileID: 342243343}
   - component: {fileID: 342243345}
   m_Layer: 0
-  m_Name: Mano4
+  m_Name: Mano3
   m_TagString: padre
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1824,7 +1824,7 @@ GameObject:
   - component: {fileID: 638003546}
   - component: {fileID: 638003548}
   m_Layer: 0
-  m_Name: Mano2
+  m_Name: Mano1
   m_TagString: padre
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1995,7 +1995,7 @@ GameObject:
   - component: {fileID: 650232714}
   - component: {fileID: 650232716}
   m_Layer: 0
-  m_Name: Mano3
+  m_Name: Mano2
   m_TagString: padre
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2972,7 +2972,7 @@ GameObject:
   - component: {fileID: 1023916082}
   - component: {fileID: 1023916084}
   m_Layer: 0
-  m_Name: Mano6
+  m_Name: Mano5
   m_TagString: padre
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -5957,7 +5957,7 @@ GameObject:
   - component: {fileID: 1768162872}
   - component: {fileID: 1768162874}
   m_Layer: 0
-  m_Name: Mano5
+  m_Name: Mano4
   m_TagString: padre
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -6257,6 +6257,7 @@ MonoBehaviour:
   mazoCentral: []
   zOffset: 0.03
   segundos: 0.01
+  cantidadCartasMano: 6
   montonesPos:
   - {fileID: 766296666}
   - {fileID: 1372054657}
@@ -6299,7 +6300,6 @@ MonoBehaviour:
   manoJ3: []
   manoJ4: []
   textoJugadorActual: {fileID: 679782897}
-  textoComodinRemplazaM1: {fileID: 0}
 --- !u!4 &1816188636
 Transform:
   m_ObjectHideFlags: 0
@@ -6478,7 +6478,7 @@ GameObject:
   - component: {fileID: 1872485914}
   - component: {fileID: 1872485916}
   m_Layer: 0
-  m_Name: Mano1
+  m_Name: Mano0
   m_TagString: padre
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

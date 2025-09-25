@@ -136,7 +136,7 @@ public class UserInput : MonoBehaviour
                 {
                     int order = SiguienteOrden(destino.transform);
                     Apilar(dragTransform.gameObject, destino.transform, ref order, 0f); //el cero es porque no tenemos que moverlas hacia abajo, solo las apila.
-                    VerificarMano();
+                    //VerificarMano();
                 }
                 else //vuelvo a posicion inicial
                 {
@@ -148,9 +148,9 @@ public class UserInput : MonoBehaviour
             }
 
             //*****************
-            //ESPACIOS (de jugador, descarte)   (Aqui esta relacionado el bug: BUG.001, creo)
+            //ESPACIOS (de jugador, descarte)  
             //*****************
-            else if (nombreDestino.StartsWith("Espacio"))
+            else if (nombreDestino.StartsWith("Espacio")&&dragTransform.GetComponent<Seleccionable>().padre!="CEspacio")  //ultima parte soluciona BUG.001
             {
                 dragTransform.localScale = scaleOriginal;
                 dragTransform.GetComponent<SpriteRenderer>().sortingOrder = orderOriginal; //creo que es innecesario pero lo dejare para evitar problemas
@@ -197,7 +197,7 @@ public class UserInput : MonoBehaviour
                 {
                     int order = SiguienteOrden(destino.transform);
                     Apilar(dragTransform.gameObject, destino.transform, ref order, 0f);
-                    VerificarMano();
+                    //VerificarMano();
                 }
 
                 // Al colocar un COMODIN
@@ -222,7 +222,7 @@ public class UserInput : MonoBehaviour
                     {
                         int order = SiguienteOrden(destino.transform);
                         Apilar(dragTransform.gameObject, destino.transform, ref order, 0f);
-                        VerificarMano();                        
+                        //VerificarMano();                        
                     }
                 }
 
@@ -239,7 +239,7 @@ public class UserInput : MonoBehaviour
                         {
                             int order = SiguienteOrden(destino.transform);
                             Apilar(dragTransform.gameObject, destino.transform, ref order, 0f);
-                            VerificarMano();
+                            //VerificarMano();
 
                             int ordenDescarte = 0;
                             while(destino.transform.childCount>0) //mientras mi Monton tenga cartas
@@ -256,7 +256,7 @@ public class UserInput : MonoBehaviour
                         {
                             int order = SiguienteOrden(destino.transform);
                             Apilar(dragTransform.gameObject, destino.transform, ref order, 0f);
-                            VerificarMano();
+                            //VerificarMano();
                         }
 
                     }
@@ -276,6 +276,10 @@ public class UserInput : MonoBehaviour
             {
                 // otros
                 Debug.Log("Lugar no reconocido");
+                if (dragTransform.GetComponent<Seleccionable>().padre == "CEspacio")
+                {
+                    Debug.Log("No puedes tomar y dejar una carta en los espacios");
+                }
                 dragTransform.position = posicionInicial;
                 dragTransform.localScale = scaleOriginal;
                 dragTransform.GetComponent<SpriteRenderer>().sortingOrder = orderOriginal; //creo que es innecesario pero lo dejare para evitar problemas
@@ -412,12 +416,12 @@ public class UserInput : MonoBehaviour
         return -1; //para otros casos
     }
 
-    private void VerificarMano() //BUG.009
-    {
-        Debug.Log($"Verificando Mano: {juego.cantidadCartasMano - 1}");
-        if (juego.cantidadCartasMano-1 <= 0) //colocar en cero para el juego original.
-        {
-            juego.TerminarTurno();
-        }
-    }
+    //private void VerificarMano() //BUG.009
+    //{
+    //    Debug.Log($"Verificando Mano: {juego.cantidadCartasMano - 1}");
+    //    if (juego.cantidadCartasMano-1 <= 0) //colocar en cero para el juego original.
+    //    {
+    //        juego.TerminarTurno();
+    //    }
+    //}
 }

@@ -17,7 +17,7 @@ public class GameController : MonoBehaviour
     public List<string> mazoCentral;
     public float zOffset = 0.03f;
     public float segundos = 0.03f;
-    public int cantidadCartasMano = 6;
+    //public int cantidadCartasMano = 6;
 
     //-------------------------------------------------------------------------------------------------------------------
     //POSICIONES DE LOS GO (LOS BORDES)
@@ -65,7 +65,7 @@ public class GameController : MonoBehaviour
     private void Update()
     {
         textoJugadorActual.text = "Jugador Actual: J" + (jugadorActual+1).ToString();
-        cantidadCartasMano = ContarCartasMano();
+        //cantidadCartasMano = ContarCartasMano();
         VerificarMazoCentral();
     }
 
@@ -76,6 +76,18 @@ public class GameController : MonoBehaviour
         Mezclar(mazoCentral);
         RepartirJugadores();
         MostrarCartas();
+        ComodinAntesDePartir();//METODO PARA VERIFICAR MANO ANTES DE PARTIR (PARA VER SI ALGUNO DE ESOS ES COMODIN) (BUG.011)
+        //Debug.Log($"Completaremos mano de J{jugadorActual+1}");
+        StartCoroutine(CompletarSecuencial());  
+    }
+
+    private IEnumerator CompletarSecuencial()
+    {
+        for (int i = 0; i < cantidadDeJugadores; i++)
+        {
+            yield return new WaitForSeconds(0.1f);
+            CompletarMano(i);
+        }
     }
 
     public List<string> GenerarMazoCentral() 
@@ -271,20 +283,24 @@ public class GameController : MonoBehaviour
     public void TerminarTurno()
     {
         SiguienteJugador(jugadorActual); //cambiar al siguiente jugador
-        CompletarMano(); //rellenar la mano de este jugador
+        CompletarMano(jugadorActual); //rellenar la mano de este jugador
     }
 
-    public void CompletarMano()
+    public void CompletarMano(int JugAct)
     {
-        //Debug.Log("Se inicia Completado de mano");
+        Debug.Log($"Se inicia Completado de mano jugador {JugAct+1}");
         for (int i = 0;i<6;i++) //recorremos los 6 slots de la mano del jugadorActual
         {
             //Debug.Log($"Revision de mano{i}");
             //int sortingOrder = 0;
-            Transform slot = manosPos[jugadorActual][i].transform; //establecemos slot como una transform de la posicion de la mano del jugador actual (recorriendo todos sus slots)
+            Transform slot = manosPos[JugAct][i].transform; //establecemos slot como una transform de la posicion de la mano del jugador actual (recorriendo todos sus slots)
 
             // si tiene una carta (devolverá false y eso negado es true, por ende si tiene una carta entraremos aqui),yyyyy continuaremos con el proximo punto i
-            if (!SlotEstaVacio(slot)) { continue; }
+            if (!SlotEstaVacio(slot))
+            {
+                //Debug.Log($"entramos al primer if, ya que la condicion es: {!SlotEstaVacio(slot)} (deberia decir true)");
+                continue;
+            }
 
             //mientras el slot este vacio, sacamos cartas del mazo central y las ponemos en la mano, 
             //si son comodines, no nos saca de este slot
@@ -310,10 +326,10 @@ public class GameController : MonoBehaviour
                 if(cartaTop.name.EndsWith("k")|| cartaTop.name.EndsWith("R")|| cartaTop.name.EndsWith("N"))
                 {
                     //Debug.Log($"La carta top es comodin, por ende entregamos en espacios comodines");
-                    int comodinOrder = SiguienteOrden(comodinesJugadoresPos[jugadorActual].transform);
+                    int comodinOrder = SiguienteOrden(comodinesJugadoresPos[JugAct].transform);
                     cartaTop.GetComponent<Seleccionable>().faceUp = true; //primero damos vuelta su cara y luego la posicionamos
                     cartaTop.GetComponent<Seleccionable>().setPadre("CComodin"); //aun no se si el padre implica algo, el nombre... quizas borrar (REVISAR)
-                    ApilarEnAncla(cartaTop, comodinesJugadoresPos[jugadorActual].transform, ref comodinOrder); //NO SE SI ESTO FUNCIONARA! DEBUGEAR.
+                    ApilarEnAncla(cartaTop, comodinesJugadoresPos[JugAct].transform, ref comodinOrder); //NO SE SI ESTO FUNCIONARA! DEBUGEAR.
                     continue;
                 }
 
@@ -337,39 +353,7 @@ public class GameController : MonoBehaviour
         }
         return max += 1;
     }
-
-    //private GameObject TomarTopMazoCentral()
-    //{
-    //    Debug.Log($"Iniciamos TomarTopMazoCentral");
-    //    Collider2D[] hits = Physics2D.OverlapPointAll(mazoCentralPos.transform.position);
-    //    GameObject top = null;
-    //    Debug.Log($"Top aqui deberia estar NULL: {top}");
-    //    int mejorOrden = int.MinValue; //le ponemos el valor mas bajo para un entero (simplemente para no poner -1)  
-
-    //    foreach(Collider2D h in hits)
-    //    {
-    //        if (h == null || !h.CompareTag("carta")) continue; //si entre todos los collider que detecta no hay ninguno con tag "carta", entonces dejara top como null
-    //        var sr = h.GetComponent<SpriteRenderer>(); //esto es para tener informacion de su sortingOrder
-
-    //        //esta mierda me esta dando errores al final del repartijo de cartas...
-    //        int orden = sr ? sr.sortingOrder : 0; //basicamente aqui digo que orden toma el valor de sr.sortingOrder, si no encuentra ningun sprite render, lo coloca como 0
-    //        //fin de la cosa rara
-
-    //        Debug.Log($"orden es {orden}, mejorOrden es {mejorOrden}");
-    //        if (orden >= mejorOrden)
-    //        {
-    //            Debug.Log($"Top al entrar es {top}");
-    //            Debug.Log($"orden es mayor o igual a mejor orden");
-    //            mejorOrden = orden;
-    //            Debug.Log($"mejorOrden ahora es ={orden}");
-    //            top = h.gameObject; //con esto cada vez que el orden sea mayor al mejorOrden encontrado, guardaremos el collider como si fuera Top.
-    //            Debug.Log($"top es {top}");
-    //        }
-    //    }
-    //    Debug.Log($"devuelve top = {top}");
-    //    return top;
-    //}
-
+        
     private GameObject TomarTopMazoCentral() //este metodo arreglo el (BUG.004)
     {
         Vector2 centro = mazoCentralPos.transform.position;
@@ -402,10 +386,17 @@ public class GameController : MonoBehaviour
 
     private bool SlotEstaVacio(Transform slotito) //si el slot esta vacio devuelve True. 
     {
+        //Debug.Log($"Revisando si slot ({slotito} esta vacio)");
         var hits = Physics2D.OverlapPointAll(slotito.position);
         foreach (var h in hits)
+        {
             if (h != null && h.CompareTag("carta"))
+            {
+                //Debug.Log($"Hay una carta ({h.name}), devolvemos False");
                 return false;
+            }
+        }            
+        //Debug.Log("NO hay una carta, devolvemos true");
         return true;
     }
     private void SiguienteJugador(int JugadorActual)
@@ -430,20 +421,20 @@ public class GameController : MonoBehaviour
         manoJ4.Clear();
     }
 
-    private int ContarCartasMano() //BUG.009
-    {
-        int total = 0;
-        foreach(var slot in manosPos[jugadorActual])
-        {
-            //if(slotGO ==null) continue;
+    //private int ContarCartasMano() //BUG.009
+    //{
+    //    int total = 0;
+    //    foreach(var slot in manosPos[jugadorActual])
+    //    {
+    //        //if(slotGO ==null) continue;
 
-            if (slot.transform.childCount > 0 && slot.transform.GetChild(slot.transform.childCount - 1).CompareTag("carta"))
-            {
-                total++;
-            }
-        }
-        return total;
-    }
+    //        if (slot.transform.childCount > 0 && slot.transform.GetChild(slot.transform.childCount - 1).CompareTag("carta"))
+    //        {
+    //            total++;
+    //        }
+    //    }
+    //    return total;
+    //}
 
     private void VerificarMazoCentral()  //BUG.008 
     {
@@ -452,6 +443,33 @@ public class GameController : MonoBehaviour
         {
             Debug.Log($"Mazo central vacio, cartas: {mazoCentralPos.transform.childCount}");
             RellenarMazoCentral();
+        }
+    }
+
+    private void ComodinAntesDePartir() //en este metodo la idea es poder hacer un barrido de la mano y si hay algun comodin ponerlo en el espacio de los comodines
+    {
+        for(int j=0;j<cantidadDeJugadores;j++)
+        {
+            Debug.Log($"Se inicia verificacion de comodines en mano de jugador J{j + 1}");
+            for (int i = 0; i < 6; i++) //recorremos los 6 slots de la mano del jugadorActual
+            {
+                //Debug.Log($"Revision de mano{i}");
+                int comodinOrder = SiguienteOrden(comodinesJugadoresPos[j].transform);
+                Transform slot = manosPos[j][i].transform; //establecemos slot como una transform de la posicion de la mano del jugador actual (recorriendo todos sus slots)
+
+                var hits = Physics2D.OverlapPointAll(slot.position); //solo va a encontrar una carta.
+                foreach (var h in hits)
+                    if (h != null && h.CompareTag("carta"))
+                    {
+                        if (h.name.EndsWith("k") || h.name.EndsWith("N") || h.name.EndsWith("R"))
+                        {
+                            Debug.Log($"Es un comodin, lo sacamos de aqui");
+                            h.GetComponent<Seleccionable>().setPadre("CComodin"); //aun no se si el padre implica algo, el nombre... quizas borrar (revisado, ok)
+                            ApilarEnAncla(h.gameObject, comodinesJugadoresPos[j].transform, ref comodinOrder);
+                            //Debug.Log($"ahora ponemos una carta del mazo en este espacio");
+                        }
+                    }
+            }
         }
     }
 }
