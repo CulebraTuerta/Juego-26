@@ -3,9 +3,11 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using TMPro;
+using Unity.Collections.LowLevel.Unsafe;
 using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.Rendering;
 
 
 public class GameController : MonoBehaviour
@@ -17,7 +19,8 @@ public class GameController : MonoBehaviour
     public List<string> mazoCentral;
     public float zOffset = 0.03f;
     public float segundos = 0.03f;
-    //public int cantidadCartasMano = 6;
+    public bool ASenMano = false;
+    public int cantidadCartasMano = 6;
 
     //-------------------------------------------------------------------------------------------------------------------
     //POSICIONES DE LOS GO (LOS BORDES)
@@ -30,6 +33,10 @@ public class GameController : MonoBehaviour
     public GameObject[] manoJ2Pos;
     public GameObject[] manoJ3Pos;
     public GameObject[] manoJ4Pos;
+    public GameObject[] espaciosJ1Pos;
+    public GameObject[] espaciosJ2Pos;
+    public GameObject[] espaciosJ3Pos;
+    public GameObject[] espaciosJ4Pos;
     //falta incluir posiciones del tablero del jugador(es): comodines, mazo, espacios.
     //-------------------------------------------------------------------------------------------------------------------
 
@@ -38,27 +45,28 @@ public class GameController : MonoBehaviour
     public List<string>[] mazosJugadores;
     public List<string>[] manosJugadores; //lista de todas las manos de los jugadores
     public GameObject[][] manosPos;
+    public GameObject[][] espaciosPos;
     //falta incluir los otros jugadores y espacios
     //-------------------------------------------------------------------------------------------------------------------
 
     //-------------------------------------------------------------------------------------------------------------------
     //LISTA DE CADA UNO DE LOS ESPACIOS INTERACTUABLES
-    public List<string> mazoJ1 = new List<string>();
-    public List<string> mazoJ2 = new List<string>();
-    public List<string> mazoJ3 = new List<string>();
-    public List<string> mazoJ4 = new List<string>();
-    public List<string> manoJ1 = new List<string>(); //lista de la mano del jugador 1
-    public List<string> manoJ2 = new List<string>();
-    public List<string> manoJ3 = new List<string>();
-    public List<string> manoJ4 = new List<string>();
+    private List<string> mazoJ1 = new List<string>();
+    private List<string> mazoJ2 = new List<string>();
+    private List<string> mazoJ3 = new List<string>();
+    private List<string> mazoJ4 = new List<string>();
+    private List<string> manoJ1 = new List<string>(); //lista de la mano del jugador 1
+    private List<string> manoJ2 = new List<string>();
+    private List<string> manoJ3 = new List<string>();
+    private List<string> manoJ4 = new List<string>();
     public TextMeshPro textoJugadorActual;
-    //public TextMeshPro textoComodinRemplazaM1;
 
     void Start()
     {
         mazosJugadores = new List<string>[] { mazoJ1, mazoJ2, mazoJ3, mazoJ4, };
         manosJugadores = new List<string>[] { manoJ1, manoJ2, manoJ3, manoJ4, };
         manosPos = new GameObject[][] { manoJ1Pos, manoJ2Pos, manoJ3Pos, manoJ4Pos };
+        espaciosPos = new GameObject[][] {espaciosJ1Pos, espaciosJ2Pos, espaciosJ3Pos, espaciosJ4Pos };
         IniciarJuego();        
     }
 
@@ -67,6 +75,7 @@ public class GameController : MonoBehaviour
         textoJugadorActual.text = "Jugador Actual: J" + (jugadorActual+1).ToString();
         //cantidadCartasMano = ContarCartasMano();
         VerificarMazoCentral();
+        VerSiElQloGano(jugadorActual);
     }
 
     public void IniciarJuego()
@@ -86,8 +95,14 @@ public class GameController : MonoBehaviour
         for (int i = 0; i < cantidadDeJugadores; i++)
         {
             yield return new WaitForSeconds(0.1f);
-            CompletarMano(i);
+            CompletarMano(i); 
         }
+    }
+
+    private IEnumerator CompletarManoJugadorActual(int jugadorAct)
+    {
+        yield return new WaitForSeconds(0.1f);
+        CompletarMano(jugadorAct);
     }
 
     public List<string> GenerarMazoCentral() 
@@ -134,7 +149,7 @@ public class GameController : MonoBehaviour
 
     private void RepartirJugadores()
     {
-        int cantidadaARepartir = 20; //COLOCAR EN 20 PARA JUEGO OFICIAL
+        int cantidadaARepartir = 1; //COLOCAR EN 20 PARA JUEGO OFICIAL
         for (int i = 0; i < cantidadDeJugadores; i++)
         {
             for (int j = 0; j < cantidadaARepartir; j++) //con esto reparto 20 cartas a cada jugador segun la cantidad de jugadore
@@ -283,12 +298,27 @@ public class GameController : MonoBehaviour
     public void TerminarTurno()
     {
         SiguienteJugador(jugadorActual); //cambiar al siguiente jugador
-        CompletarMano(jugadorActual); //rellenar la mano de este jugador
+        int cartasFaltantes = 6 - ContarCartasMano();
+        int cantidadCartasEnMazoCentral = mazoCentralPos.transform.childCount;
+
+        if(cartasFaltantes >= cantidadCartasEnMazoCentral) //BUG.014
+        {
+            //Debug.Log($"las cartas faltantes son {cartasFaltantes}, en el mazo central quedan {cantidadCartasEnMazoCentral}");
+            //Debug.Log("reparto cartas del mazo central");
+            StartCoroutine(CompletarManoJugadorActual(jugadorActual));
+            RellenarMazoCentral();
+        }
+        //Debug.Log("reparto nuevamente del mazo central");
+        //contar cuantas cartas le faltan en la mano
+        //hay suficientes cartas en el mazo central? 
+        //si- continuar
+        //no- repartir esa carta al jugador
+        StartCoroutine(CompletarManoJugadorActual(jugadorActual)); //rellenar la mano de este jugador
     }
 
     public void CompletarMano(int JugAct)
     {
-        Debug.Log($"Se inicia Completado de mano jugador {JugAct+1}");
+        //Debug.Log($"Se inicia Completado de mano jugador {JugAct+1}");
         for (int i = 0;i<6;i++) //recorremos los 6 slots de la mano del jugadorActual
         {
             //Debug.Log($"Revision de mano{i}");
@@ -421,21 +451,6 @@ public class GameController : MonoBehaviour
         manoJ4.Clear();
     }
 
-    //private int ContarCartasMano() //BUG.009
-    //{
-    //    int total = 0;
-    //    foreach(var slot in manosPos[jugadorActual])
-    //    {
-    //        //if(slotGO ==null) continue;
-
-    //        if (slot.transform.childCount > 0 && slot.transform.GetChild(slot.transform.childCount - 1).CompareTag("carta"))
-    //        {
-    //            total++;
-    //        }
-    //    }
-    //    return total;
-    //}
-
     private void VerificarMazoCentral()  //BUG.008 
     {
         //si el mazo central queda vacio, entonces rellenamos
@@ -450,7 +465,7 @@ public class GameController : MonoBehaviour
     {
         for(int j=0;j<cantidadDeJugadores;j++)
         {
-            Debug.Log($"Se inicia verificacion de comodines en mano de jugador J{j + 1}");
+            //Debug.Log($"Se inicia verificacion de comodines en mano de jugador J{j + 1}");
             for (int i = 0; i < 6; i++) //recorremos los 6 slots de la mano del jugadorActual
             {
                 //Debug.Log($"Revision de mano{i}");
@@ -463,13 +478,80 @@ public class GameController : MonoBehaviour
                     {
                         if (h.name.EndsWith("k") || h.name.EndsWith("N") || h.name.EndsWith("R"))
                         {
-                            Debug.Log($"Es un comodin, lo sacamos de aqui");
+                            //Debug.Log($"Es un comodin, lo sacamos de aqui");
                             h.GetComponent<Seleccionable>().setPadre("CComodin"); //aun no se si el padre implica algo, el nombre... quizas borrar (revisado, ok)
                             ApilarEnAncla(h.gameObject, comodinesJugadoresPos[j].transform, ref comodinOrder);
                             //Debug.Log($"ahora ponemos una carta del mazo en este espacio");
                         }
                     }
             }
+        }
+    }
+
+    private int ContarCartasMano() //BUG.014
+    {
+        int total = 0;
+        foreach (var slot in manosPos[jugadorActual])
+        {
+            //if(slotGO ==null) continue;
+
+            if (slot.transform.childCount > 0 && slot.transform.GetChild(slot.transform.childCount - 1).CompareTag("carta"))
+            {
+                total++;
+            }
+        }
+        return total;
+    }
+
+    public bool ExisteAsEnMano(int jugadorAct)
+    {
+        foreach(var slot in manosPos[jugadorAct])
+        {
+            if(slot.transform.childCount>0 && slot.transform.GetChild(0).name.EndsWith("a") && HayMontonVacio()) //la ultima parte es por si los espacios centrales estan desocupados...
+            {
+                //Debug.Log("Hay un AS en la Mano");
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public bool HayMontonVacio()
+    {
+        foreach (var slot in montonesPos)
+        {
+            if(slot.transform.childCount==0)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private int ContarCartasEspacios() 
+    {
+        int total = 0;
+        foreach (var slot in espaciosPos[jugadorActual])
+        {
+            if (slot.transform.childCount > 0) //si tiene cartas
+            {
+                total += slot.transform.childCount;
+            }
+        }
+        return total;
+    }
+
+    private void VerSiElQloGano(int jugadorAct)
+    {
+        int cantCartasMazo = mazosJugadoresPos[jugadorAct].transform.childCount;
+        int cantComodines = comodinesJugadoresPos[jugadorAct].transform.childCount;
+        int cantCartasMano = ContarCartasMano();
+        int cantEspacios = ContarCartasEspacios();
+
+        Debug.Log($"CCMZ: {cantCartasMazo}; CCOM: {cantComodines}; CCMN: {cantCartasMano}; CESP: {cantEspacios}");
+        if (cantCartasMazo == 0 && (cantComodines+cantCartasMano+cantEspacios)<=4) //si el mazo qlo del jugador actual esta en cero, entonces ya gano
+        {
+            Debug.Log($"El jugador J{jugadorAct + 1} gano");
         }
     }
 }

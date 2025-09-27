@@ -1,8 +1,11 @@
 using System.Linq;
 using System.Net;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices.WindowsRuntime;
 using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.Rendering;
+using UnityEngine.U2D;
 
 public class UserInput : MonoBehaviour
 {
@@ -16,13 +19,19 @@ public class UserInput : MonoBehaviour
     private float scaleHover = 1.2f;
 
     public float separacionY = 0.22f; //esto es para mover las cartas hacia abajo cuado las montemos
-    public GameController juego; //esto no lo estamos usando
+    public GameController juego;
     //public int jugadorActual = 0; //todas las acciones seran con el jugador 1.
+
+    private void Awake()
+    {
+        juego = gameObject.GetComponent<GameController>();
+    }
 
     void Update()
     {
         Vector3 mouse = Camera.main.ScreenToWorldPoint(Input.mousePosition);
         mouse.z = 0f;
+        bool ASenMANO = juego.ExisteAsEnMano(juego.jugadorActual);
         
         //-------------------------------------------------------------------------
         // Debug clic derecho
@@ -32,9 +41,11 @@ public class UserInput : MonoBehaviour
             var hit = TopCartaBajoMouse(mouse); //hit es un gameobject
             if (hit != null)
             {
-                Debug.Log("Carta: " + hit.name);
+                Debug.Log($"Carta: {hit.name}");
                 Debug.Log($"Padre: {hit.GetComponent<Seleccionable>().padre}");
-                //Debug.Log($"Father: {PadreBajoMouse(mouse)}");
+                Debug.Log($"Sorting order: {hit.GetComponent<SpriteRenderer>().sortingOrder}");
+                Debug.Log($"Child count padre: {hit.transform.parent.childCount}");
+                Debug.Log($"hay un AS?: {ASenMANO}");
             }
         }
 
@@ -57,13 +68,13 @@ public class UserInput : MonoBehaviour
                 }
 
                 //sino, solo la arrastramos (aplica para todas las cartas, menos las del mazo central). 
-                else if (sel.padre != "CMazoCentral" && sel.padre != "CMonton") //Y las cartas del monton (ya no se pueden mover) (BUG.007)
+                else if (sel.padre != "CMazoCentral" && sel.padre != "CMonton" && !ASenMANO) //Y las cartas del monton (ya no se pueden mover) (BUG.007)
                 {
                     if(sel.padre=="CEspacio")
                     {
                         //Debug.Log("estoy tomando una carta desde el espacio");
                         //Debug.Log($"sortin order: {sel.GetComponent<SpriteRenderer>().sortingOrder}; contar cartas: {ContarCartas(PadreBajoMouse(mouse).transform)}");
-                        if(sel.GetComponent<SpriteRenderer>().sortingOrder == ContarCartas(PadreBajoMouse(mouse).transform)) // BUG.002
+                        if(sel.GetComponent<SpriteRenderer>().sortingOrder == sel.transform.parent.childCount) // BUG.002 //BUG.013 // ESTOOOO ANTESSS ContarCartas(PadreBajoMouse(mouse).transform)
                         {
                             Debug.Log("esta carta es la de arriba");
                             dragTransform = hitCarta.transform;
@@ -89,6 +100,14 @@ public class UserInput : MonoBehaviour
                     }
                           
                 }
+                else if(ASenMANO && sel.name.EndsWith("a"))
+                {
+                    dragTransform = hitCarta.transform;
+                    posicionInicial = dragTransform.position;
+                    scaleOriginal = dragTransform.localScale;
+                    dragOffset = dragTransform.position - mouse;
+                    orderOriginal = dragTransform.GetComponent<SpriteRenderer>().sortingOrder;
+                }
                 
             }
 
@@ -105,17 +124,28 @@ public class UserInput : MonoBehaviour
         }
 
         //-------------------------------------------------------------------------
-        //cando soltamos el clic  (UNDER DEVELOPMENT)
+        //cando soltamos el clic  
         //-------------------------------------------------------------------------
         if(Input.GetMouseButtonUp(0) && dragTransform != null)
         {
             var destino = PadreBajoMouse(mouse);
-            if (destino == null) //no soltamos en un padre valido (basicamente en un espacio vacio)
+            if (destino == null) //no soltamos en un padre valido (basicamente en un espacio vacio) 
             {
-                dragTransform.position = posicionInicial;
-                dragTransform.localScale=scaleOriginal;
-                dragTransform = null;
-                return;
+                Debug.Log("Evaluando lugar no permitido");
+                var anclaPorCarta = AnclaCartaBajoMouse(mouse, dragTransform);
+                if (anclaPorCarta != null)
+                {
+                    Debug.Log("evaluamos segunda carta bajo mouse");
+                    destino = anclaPorCarta;
+                    Debug.Log($"nombre del destino = {destino.name}");
+                }
+                else
+                {
+                    dragTransform.position = posicionInicial;
+                    dragTransform.localScale = scaleOriginal;
+                    dragTransform = null;
+                    return;
+                }
             }
 
             string nombreCarta = dragTransform.name;
@@ -150,6 +180,8 @@ public class UserInput : MonoBehaviour
             //*****************
             //ESPACIOS (de jugador, descarte)  
             //*****************
+
+            
             else if (nombreDestino.StartsWith("Espacio")&&dragTransform.GetComponent<Seleccionable>().padre!="CEspacio")  //ultima parte soluciona BUG.001
             {
                 dragTransform.localScale = scaleOriginal;
@@ -177,6 +209,16 @@ public class UserInput : MonoBehaviour
                 dragTransform.GetComponent<Seleccionable>().padre = "CEspacio";
             }
 
+            //else if(destino.GetComponent<Seleccionable>().padre == "CEspacio" && dragTransform.GetComponent<Seleccionable>().padre == "CMano")
+            //{
+            //    dragTransform.localScale = scaleOriginal;
+            //    dragTransform.GetComponent<SpriteRenderer>().sortingOrder = orderOriginal; //creo que es innecesario pero lo dejare para evitar problemas
+            //    Debug.Log("caso especial para dejar carta en espacio fuera del espacio fisico del padre espacio");
+            //    int order = destino.transform.GetComponent<SpriteRenderer>().sortingOrder;
+            //    Apilar(dragTransform.gameObject, destino.transform.parent, ref order, separacionY); //ojo con esta parte porque tiene que ser del transform del padre.
+            //    juego.TerminarTurno();
+            //}
+
             //*****************
             //MONTONES (De mesa central)
             //*****************
@@ -193,7 +235,7 @@ public class UserInput : MonoBehaviour
                 string nombreUltimaCarta = NombreUltimaCarta(destino.transform);
 
                 // Al colocar un AS
-                if(nombreCarta.EndsWith("a") && cartasEnDestino ==0)
+                if (nombreCarta.EndsWith("a") && cartasEnDestino == 0)
                 {
                     int order = SiguienteOrden(destino.transform);
                     Apilar(dragTransform.gameObject, destino.transform, ref order, 0f);
@@ -201,17 +243,17 @@ public class UserInput : MonoBehaviour
                 }
 
                 // Al colocar un COMODIN
-                else if(nombreCarta.EndsWith("k") || nombreCarta.EndsWith("N") || nombreCarta.EndsWith("R"))
+                else if (nombreCarta.EndsWith("k") || nombreCarta.EndsWith("N") || nombreCarta.EndsWith("R"))
                 {
                     //Si la ultima carta es un comodin o un J (para arreglar que ponga un comodin como Q) (BUG.003)
-                    if(nombreUltimaCarta.EndsWith("k") || nombreUltimaCarta.EndsWith("N") || nombreUltimaCarta.EndsWith("R")||nombreUltimaCarta.EndsWith("j"))
+                    if (nombreUltimaCarta.EndsWith("k") || nombreUltimaCarta.EndsWith("N") || nombreUltimaCarta.EndsWith("R") || nombreUltimaCarta.EndsWith("j"))
                     {
                         Debug.Log("No es posible colocar dos comodines seguidos o estas poniendo un comodin como Q");
                         dragTransform.position = posicionInicial;
                         dragTransform = null;
                         return;
                     }
-                    else if(cartasEnDestino == 0)
+                    else if (cartasEnDestino == 0)
                     {
                         Debug.Log("No es posible un comodin como inicial");
                         dragTransform.position = posicionInicial;
@@ -232,23 +274,23 @@ public class UserInput : MonoBehaviour
                     dragTransform.localScale = scaleOriginal;
                     dragTransform.GetComponent<SpriteRenderer>().sortingOrder = orderOriginal; //creo que es innecesario pero lo dejare para evitar problemas
                     int valorCarta = ValorNumerico(nombreCarta);
-                    
-                    if(valorCarta == cartasEnDestino +1 && cartasEnDestino >0)
+
+                    if (valorCarta == cartasEnDestino + 1 && cartasEnDestino > 0)
                     {
-                        if(valorCarta==12)
+                        if (valorCarta == 12)
                         {
                             int order = SiguienteOrden(destino.transform);
                             Apilar(dragTransform.gameObject, destino.transform, ref order, 0f);
                             //VerificarMano();
 
                             int ordenDescarte = 0;
-                            while(destino.transform.childCount>0) //mientras mi Monton tenga cartas
+                            while (destino.transform.childCount > 0) //mientras mi Monton tenga cartas
                             {
                                 Transform carta = destino.transform.GetChild(0); // agarro la primera carta
                                 if (carta.CompareTag("carta"))
                                 {
                                     Debug.Log("Descartando monton");
-                                    Apilar(carta.gameObject,descartePos.transform, ref ordenDescarte, 0f);
+                                    Apilar(carta.gameObject, descartePos.transform, ref ordenDescarte, 0f);
                                 }
                             }
                         }
@@ -275,7 +317,7 @@ public class UserInput : MonoBehaviour
             else
             {
                 // otros
-                Debug.Log("Lugar no reconocido");
+                Debug.Log("Lugar no permitido");
                 if (dragTransform.GetComponent<Seleccionable>().padre == "CEspacio")
                 {
                     Debug.Log("No puedes tomar y dejar una carta en los espacios");
@@ -333,6 +375,44 @@ public class UserInput : MonoBehaviour
         return padreCollider;        
     }
 
+    private Collider2D AnclaCartaBajoMouse(Vector3 mouse, Transform drag)
+    {
+        var hits = Physics2D.OverlapPointAll(mouse);
+        Collider2D cartaTop = null;
+        int mejorOrden = int.MinValue; //le ponemos el valor mas bajo para un entero (simplemente para no poner -1)  
+
+        foreach (var h in hits)
+        {
+            if (h == null || !h.CompareTag("carta")) continue; //si entre todos los collider que detecta no hay ninguno con tag "carta", entonces dejara padrecollider como null
+            if (drag && h.transform == drag) continue; // excluir la que estoy arrastrando
+            Debug.Log($"Carta {h.name} bajo carta {dragTransform.name}");
+            var sr = h.GetComponent<SpriteRenderer>(); //esto es para tener informacion de su sortingOrder
+            int orden = sr ? sr.sortingOrder : 0; //basicamente aqui digo que orden toma el valor de sr.sortingOrder, si no encuentra ningun sprite render, lo coloca como 0
+            if (orden >= mejorOrden)
+            {
+                mejorOrden = orden;
+                cartaTop = h; //con esto cada vez que el orden sea mayor al mejorOrden encontrado, guardaremos el collider como si fuera Top.
+            }
+        }
+
+        if(cartaTop) //si existe una carta
+        {
+            Debug.Log("carta top existe");
+            var padre = cartaTop.transform.parent;
+            if (padre)
+            {
+                var colPadre = padre.GetComponent<Collider2D>();
+                if(colPadre && colPadre.CompareTag("padre"))
+                {
+                    return colPadre;
+                }
+                    
+            }
+        }
+        Debug.Log("Carta top, no existe: {cartaTop.name}");
+        return null;
+    }
+
     private int SiguienteOrden(Transform ancla) //con este metodo podemos ver el ancla que necesitemos revisar
                                                 //y entregamos de vuelta el orden que deberia tener la carta que se quiere poner
     {
@@ -370,7 +450,7 @@ public class UserInput : MonoBehaviour
         if (sel) sel.faceUp = true;
     }
 
-    private int ContarCartas(Transform ancla)
+    private int ContarCartas(Transform ancla) //este contar cartas lo simplifique usando (seleccion.transform.parent.childcount) donde seleccion es el collider.
     {
         int cartas = 0;
         for (int i = 0;i < ancla.childCount;i++)

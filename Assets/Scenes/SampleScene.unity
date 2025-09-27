@@ -6257,6 +6257,7 @@ MonoBehaviour:
   mazoCentral: []
   zOffset: 0.03
   segundos: 0.01
+  ASenMano: 0
   cantidadCartasMano: 6
   montonesPos:
   - {fileID: 766296666}
@@ -6291,14 +6292,18 @@ MonoBehaviour:
   - {fileID: 1658442638}
   manoJ3Pos: []
   manoJ4Pos: []
-  mazoJ1: []
-  mazoJ2: []
-  mazoJ3: []
-  mazoJ4: []
-  manoJ1: []
-  manoJ2: []
-  manoJ3: []
-  manoJ4: []
+  espaciosJ1Pos:
+  - {fileID: 1205537052}
+  - {fileID: 1281732787}
+  - {fileID: 2109721090}
+  - {fileID: 1651340030}
+  espaciosJ2Pos:
+  - {fileID: 2051828743}
+  - {fileID: 1266405549}
+  - {fileID: 928519813}
+  - {fileID: 1385027577}
+  espaciosJ3Pos: []
+  espaciosJ4Pos: []
   textoJugadorActual: {fileID: 679782897}
 --- !u!4 &1816188636
 Transform:
@@ -6328,7 +6333,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   descartePos: {fileID: 2013146843}
-  separacionY: 0.22
+  separacionY: 0.3
   juego: {fileID: 1816188635}
 --- !u!1 &1821375456
 GameObject:
