@@ -149,7 +149,7 @@ public class GameController : MonoBehaviour
 
     private void RepartirJugadores()
     {
-        int cantidadaARepartir = 1; //COLOCAR EN 20 PARA JUEGO OFICIAL
+        int cantidadaARepartir = 20; //COLOCAR EN 20 PARA JUEGO OFICIAL
         for (int i = 0; i < cantidadDeJugadores; i++)
         {
             for (int j = 0; j < cantidadaARepartir; j++) //con esto reparto 20 cartas a cada jugador segun la cantidad de jugadore
@@ -236,7 +236,7 @@ public class GameController : MonoBehaviour
 
     public bool RellenarMazoCentral()
     {
-        Debug.Log("Rellenando Mazo Central");
+        //Debug.Log("Rellenando Mazo Central");
         if (descartePos == null || mazoCentralPos == null) return false;
 
         // 1) Recolectar TODAS las cartas actualmente en descarte
@@ -248,7 +248,7 @@ public class GameController : MonoBehaviour
         }
         if (cartas.Count == 0)
         {
-            Debug.Log("No hay cartas en Descarte");
+            //Debug.Log("No hay cartas en Descarte");
             return false; // nada que rellene desde el descarte
         }
 
@@ -456,7 +456,7 @@ public class GameController : MonoBehaviour
         //si el mazo central queda vacio, entonces rellenamos
         if(mazoCentralPos.transform.childCount == 0)
         {
-            Debug.Log($"Mazo central vacio, cartas: {mazoCentralPos.transform.childCount}");
+            //Debug.Log($"Mazo central vacio, cartas: {mazoCentralPos.transform.childCount}");
             RellenarMazoCentral();
         }
     }
@@ -548,7 +548,7 @@ public class GameController : MonoBehaviour
         int cantCartasMano = ContarCartasMano();
         int cantEspacios = ContarCartasEspacios();
 
-        Debug.Log($"CCMZ: {cantCartasMazo}; CCOM: {cantComodines}; CCMN: {cantCartasMano}; CESP: {cantEspacios}");
+        //Debug.Log($"CCMZ: {cantCartasMazo}; CCOM: {cantComodines}; CCMN: {cantCartasMano}; CESP: {cantEspacios}");
         if (cantCartasMazo == 0 && (cantComodines+cantCartasMano+cantEspacios)<=4) //si el mazo qlo del jugador actual esta en cero, entonces ya gano
         {
             Debug.Log($"El jugador J{jugadorAct + 1} gano");

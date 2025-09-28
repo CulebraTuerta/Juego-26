@@ -76,7 +76,7 @@ public class UserInput : MonoBehaviour
                         //Debug.Log($"sortin order: {sel.GetComponent<SpriteRenderer>().sortingOrder}; contar cartas: {ContarCartas(PadreBajoMouse(mouse).transform)}");
                         if(sel.GetComponent<SpriteRenderer>().sortingOrder == sel.transform.parent.childCount) // BUG.002 //BUG.013 // ESTOOOO ANTESSS ContarCartas(PadreBajoMouse(mouse).transform)
                         {
-                            Debug.Log("esta carta es la de arriba");
+                            //Debug.Log("esta carta es la de arriba");
                             dragTransform = hitCarta.transform;
                             posicionInicial = dragTransform.position;
                             scaleOriginal = dragTransform.localScale;
@@ -85,7 +85,7 @@ public class UserInput : MonoBehaviour
                         }
                         else
                         {
-                            Debug.Log("esta cata no es la de mas arriba, no la puedes mover");
+                            //Debug.Log("esta cata no es la de mas arriba, no la puedes mover");
                         }
 
                     }
@@ -131,13 +131,13 @@ public class UserInput : MonoBehaviour
             var destino = PadreBajoMouse(mouse);
             if (destino == null) //no soltamos en un padre valido (basicamente en un espacio vacio) 
             {
-                Debug.Log("Evaluando lugar no permitido");
+                //Debug.Log("Evaluando lugar no permitido");
                 var anclaPorCarta = AnclaCartaBajoMouse(mouse, dragTransform);
                 if (anclaPorCarta != null)
                 {
-                    Debug.Log("evaluamos segunda carta bajo mouse");
+                    //Debug.Log("evaluamos segunda carta bajo mouse");
                     destino = anclaPorCarta;
-                    Debug.Log($"nombre del destino = {destino.name}");
+                    //Debug.Log($"nombre del destino = {destino.name}");
                 }
                 else
                 {
@@ -248,14 +248,14 @@ public class UserInput : MonoBehaviour
                     //Si la ultima carta es un comodin o un J (para arreglar que ponga un comodin como Q) (BUG.003)
                     if (nombreUltimaCarta.EndsWith("k") || nombreUltimaCarta.EndsWith("N") || nombreUltimaCarta.EndsWith("R") || nombreUltimaCarta.EndsWith("j"))
                     {
-                        Debug.Log("No es posible colocar dos comodines seguidos o estas poniendo un comodin como Q");
+                        //Debug.Log("No es posible colocar dos comodines seguidos o estas poniendo un comodin como Q");
                         dragTransform.position = posicionInicial;
                         dragTransform = null;
                         return;
                     }
                     else if (cartasEnDestino == 0)
                     {
-                        Debug.Log("No es posible un comodin como inicial");
+                        //Debug.Log("No es posible un comodin como inicial");
                         dragTransform.position = posicionInicial;
                         dragTransform = null;
                         return;
@@ -289,7 +289,7 @@ public class UserInput : MonoBehaviour
                                 Transform carta = destino.transform.GetChild(0); // agarro la primera carta
                                 if (carta.CompareTag("carta"))
                                 {
-                                    Debug.Log("Descartando monton");
+                                    //Debug.Log("Descartando monton");
                                     Apilar(carta.gameObject, descartePos.transform, ref ordenDescarte, 0f);
                                 }
                             }
@@ -304,7 +304,7 @@ public class UserInput : MonoBehaviour
                     }
                     else
                     {
-                        Debug.Log("No es posible colocar esta carta (valor no valido)");
+                        //Debug.Log("No es posible colocar esta carta (valor no valido)");
                         dragTransform.position = posicionInicial;
                         //dragTransform.localScale = scaleOriginal;
                         dragTransform = null;
@@ -317,7 +317,7 @@ public class UserInput : MonoBehaviour
             else
             {
                 // otros
-                Debug.Log("Lugar no permitido");
+                //Debug.Log("Lugar no permitido");
                 if (dragTransform.GetComponent<Seleccionable>().padre == "CEspacio")
                 {
                     Debug.Log("No puedes tomar y dejar una carta en los espacios");
@@ -397,7 +397,7 @@ public class UserInput : MonoBehaviour
 
         if(cartaTop) //si existe una carta
         {
-            Debug.Log("carta top existe");
+            //Debug.Log("carta top existe");
             var padre = cartaTop.transform.parent;
             if (padre)
             {
@@ -409,7 +409,7 @@ public class UserInput : MonoBehaviour
                     
             }
         }
-        Debug.Log("Carta top, no existe: {cartaTop.name}");
+        //Debug.Log("Carta top, no existe: {cartaTop.name}");
         return null;
     }
 
