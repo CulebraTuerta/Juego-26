@@ -24,7 +24,7 @@ public class GameController : MonoBehaviour
 
     //-------------------------------------------------------------------------------------------------------------------
     //POSICIONES DE LOS GO (LOS BORDES)
-    public GameObject[] montonesPos;
+    public GameObject[] montonesPos; //son los espacios del centro los 4
     public GameObject mazoCentralPos;
     public GameObject descartePos;
     public GameObject[] mazosJugadoresPos;

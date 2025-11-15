@@ -10,7 +10,7 @@ using UnityEngine.U2D;
 public class UserInput : MonoBehaviour
 {
     Transform dragTransform;
-    Vector3 dragOffset;
+    private Vector3 dragOffset;
     Vector3 posicionInicial;
     Vector3 scaleOriginal;
     private int orderOriginal;
@@ -22,25 +22,37 @@ public class UserInput : MonoBehaviour
     public GameController juego;
     //public int jugadorActual = 0; //todas las acciones seran con el jugador 1.
 
+
+    //parte 3d
+    private Plane dragPlane;
+
+
     private void Awake()
     {
         juego = gameObject.GetComponent<GameController>();
+        dragPlane = new Plane(Vector3.forward, new Vector3(0f,0f, 0f));   //PLANO DE ARRASTRE PARA CARTAS EN 3D
     }
 
     void Update()
     {
-        Vector3 mouse = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-        mouse.z = 0f;
+        //Vector3 mouse = Camera.main.ScreenToWorldPoint(Input.mousePosition); //PARA CAMARA ORTOPEDICA
+        //mouse.z = 0f;
+        Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition); //PARA CAMARA CON PERPECTIVA
+
         bool ASenMANO = juego.ExisteAsEnMano(juego.jugadorActual);
-        
+
+
         //-------------------------------------------------------------------------
         // Debug clic derecho
         //-------------------------------------------------------------------------
         if (Input.GetMouseButtonDown(1))
         {
-            var hit = TopCartaBajoMouse(mouse); //hit es un gameobject
+            //var hit = TopCartaBajoMouse(mouse); //hit es un gameobject SI ESTAMOS USANDO UNA CAMARA ORTOGRAFICA
+            var hit = TopCartaBajoMouse3D(ray); //USANDO CAMARA EN PERSPECTIVA
+
             if (hit != null)
             {
+                Debug.Log($"Cordenadas: {hit.transform.localPosition.x},{hit.transform.localPosition.y},{hit.transform.localPosition.z}");
                 Debug.Log($"Carta: {hit.name}");
                 Debug.Log($"Padre: {hit.GetComponent<Seleccionable>().padre}");
                 Debug.Log($"Sorting order: {hit.GetComponent<SpriteRenderer>().sortingOrder}");
@@ -56,8 +68,10 @@ public class UserInput : MonoBehaviour
         {
 
             //string cartaPadre = PadreBajoMouse(mouse).name;
-            var hitCarta = TopCartaBajoMouse(mouse); //el metodo nos retorna un gameobject de donde esta el mouse, y nos da la carta de mas arriba.
-            if (hitCarta != null) //si le hicimos clic a una carta
+            //var hitCarta = TopCartaBajoMouse(mouse); //el metodo nos retorna un gameobject de donde esta el mouse, y nos da la carta de mas arriba.
+            var hitCarta = TopCartaBajoMouse3D(ray); //nuevo metodo para el 3d
+            
+            if (hitCarta != null && MouseOnPlane(ray, dragPlane, out var hitOnPlane)) //si le hicimos clic a una carta
             {
                 var sel=hitCarta.GetComponent<Seleccionable>();
                 if (sel != null && sel.padre == "CMazo" && sel.faceUp == false) //si es un objeto del mazo jugador y boca abajo, entonces la damos vuelta
@@ -68,19 +82,20 @@ public class UserInput : MonoBehaviour
                 }
 
                 //sino, solo la arrastramos (aplica para todas las cartas, menos las del mazo central). 
-                else if (sel.padre != "CMazoCentral" && sel.padre != "CMonton" && !ASenMANO) //Y las cartas del monton (ya no se pueden mover) (BUG.007)
+                else if (sel.padre != "CMazoCentral" && sel.padre != "CMonton" && !ASenMANO) //Y las cartas del monton (los 4 montones del medio) (ya no se pueden mover) (BUG.007)
                 {
                     if(sel.padre=="CEspacio")
                     {
                         //Debug.Log("estoy tomando una carta desde el espacio");
                         //Debug.Log($"sortin order: {sel.GetComponent<SpriteRenderer>().sortingOrder}; contar cartas: {ContarCartas(PadreBajoMouse(mouse).transform)}");
-                        if(sel.GetComponent<SpriteRenderer>().sortingOrder == sel.transform.parent.childCount) // BUG.002 //BUG.013 // ESTOOOO ANTESSS ContarCartas(PadreBajoMouse(mouse).transform)
+                        if (sel.GetComponent<SpriteRenderer>().sortingOrder == sel.transform.parent.childCount) // BUG.002 //BUG.013 // ESTOOOO ANTESSS ContarCartas(PadreBajoMouse(mouse).transform)
                         {
                             //Debug.Log("esta carta es la de arriba");
                             dragTransform = hitCarta.transform;
                             posicionInicial = dragTransform.position;
                             scaleOriginal = dragTransform.localScale;
-                            dragOffset = dragTransform.position - mouse;
+                            //dragOffset = dragTransform.position - mouse;
+                            dragOffset = dragTransform.position - hitOnPlane;
                             orderOriginal = dragTransform.GetComponent<SpriteRenderer>().sortingOrder;
                         }
                         else
@@ -95,7 +110,8 @@ public class UserInput : MonoBehaviour
                         dragTransform = hitCarta.transform;
                         posicionInicial = dragTransform.position;
                         scaleOriginal = dragTransform.localScale;
-                        dragOffset = dragTransform.position - mouse;
+                        //dragOffset = dragTransform.position - mouse;
+                        dragOffset = dragTransform.position - hitOnPlane;
                         orderOriginal = dragTransform.GetComponent<SpriteRenderer>().sortingOrder;
                     }
                           
@@ -105,7 +121,8 @@ public class UserInput : MonoBehaviour
                     dragTransform = hitCarta.transform;
                     posicionInicial = dragTransform.position;
                     scaleOriginal = dragTransform.localScale;
-                    dragOffset = dragTransform.position - mouse;
+                    //dragOffset = dragTransform.position - mouse;
+                    dragOffset = dragTransform.position - hitOnPlane;
                     orderOriginal = dragTransform.GetComponent<SpriteRenderer>().sortingOrder;
                 }
                 
@@ -116,9 +133,10 @@ public class UserInput : MonoBehaviour
         //-------------------------------------------------------------------------
         //cuando mantengo apretado el clic
         //-------------------------------------------------------------------------
-        if (Input.GetMouseButton(0) && dragTransform != null) //Con este metodo hacemos que cuando este presionado, lleve la carta pegada al mouse
+        if (Input.GetMouseButton(0) && dragTransform != null && MouseOnPlane(ray, dragPlane, out var hitOnPlane2)) //Con este metodo hacemos que cuando este presionado, lleve la carta pegada al mouse
         {
-            dragTransform.position = mouse + dragOffset;
+            //dragTransform.position = mouse + dragOffset;
+            dragTransform.position = hitOnPlane2 + dragOffset;
             dragTransform.localScale = scaleOriginal * scaleHover; //aumentamos un poco el tamaño de la carta al arrastrar
             dragTransform.GetComponent<SpriteRenderer>().sortingOrder = orderOriginal + sorterOrdenArrastre; //aumentamos su sorter order para que se vea sobre todas las cartas del tablero
         }
@@ -128,11 +146,13 @@ public class UserInput : MonoBehaviour
         //-------------------------------------------------------------------------
         if(Input.GetMouseButtonUp(0) && dragTransform != null)
         {
-            var destino = PadreBajoMouse(mouse);
+            //var destino = PadreBajoMouse(mouse);
+            var destino = PadreBajoMouse3D(ray);
             if (destino == null) //no soltamos en un padre valido (basicamente en un espacio vacio) 
             {
-                //Debug.Log("Evaluando lugar no permitido");
-                var anclaPorCarta = AnclaCartaBajoMouse(mouse, dragTransform);
+                Debug.Log("Evaluando lugar no permitido");
+                //var anclaPorCarta = AnclaCartaBajoMouse(mouse, dragTransform);
+                var anclaPorCarta = AnclaCartaBajoMouse3D(ray,dragTransform);
                 if (anclaPorCarta != null)
                 {
                     //Debug.Log("evaluamos segunda carta bajo mouse");
@@ -335,83 +355,172 @@ public class UserInput : MonoBehaviour
     }
 
     //HELPERS
-    private GameObject TopCartaBajoMouse(Vector3 mouse)
+    //private GameObject TopCartaBajoMouse(Vector3 mouse)
+    //{
+    //    Collider2D[] hits = Physics2D.OverlapPointAll(mouse);
+    //    GameObject top = null;
+    //    int mejorOrden = int.MinValue; //le ponemos el valor mas bajo para un entero (simplemente para no poner -1)  
+
+    //    foreach (Collider2D h in hits)
+    //    {
+    //        if (h == null || !h.CompareTag("carta")) continue; //si entre todos los collider que detecta no hay ninguno con tag "carta", entonces dejara top como null
+    //        var sr = h.GetComponent<SpriteRenderer>(); //esto es para tener informacion de su sortingOrder
+    //        int orden = sr ? sr.sortingOrder : 0; //basicamente aqui digo que orden toma el valor de sr.sortingOrder, si no encuentra ningun sprite render, lo coloca como 0
+    //        if (orden >= mejorOrden)
+    //        {
+    //            mejorOrden = orden;
+    //            top = h.gameObject; //con esto cada vez que el orden sea mayor al mejorOrden encontrado, guardaremos el collider como si fuera Top.
+    //        }
+    //    }
+    //    return top;
+    //}
+
+    //private Collider2D PadreBajoMouse(Vector3 mouse)
+    //{
+    //    Collider2D[] hits = Physics2D.OverlapPointAll(mouse);
+    //    Collider2D padreCollider = null;
+    //    int mejorOrden = int.MinValue; //le ponemos el valor mas bajo para un entero (simplemente para no poner -1)  
+
+    //    foreach (Collider2D h in hits)
+    //    {
+    //        if (h == null || !h.CompareTag("padre")) continue; //si entre todos los collider que detecta no hay ninguno con tag "padre", entonces dejara padrecollider como null
+    //        var sr = h.GetComponent<SpriteRenderer>(); //esto es para tener informacion de su sortingOrder
+    //        int orden = sr ? sr.sortingOrder : 0; //basicamente aqui digo que orden toma el valor de sr.sortingOrder, si no encuentra ningun sprite render, lo coloca como 0
+    //        if (orden >= mejorOrden)
+    //        {
+    //            mejorOrden = orden;
+    //            padreCollider = h; //con esto cada vez que el orden sea mayor al mejorOrden encontrado, guardaremos el collider como si fuera Top.
+    //        }
+    //    }
+    //    return padreCollider;
+    //}
+    //private Collider2D AnclaCartaBajoMouse(Vector3 mouse, Transform drag)
+    //{
+    //    var hits = Physics2D.OverlapPointAll(mouse);
+    //    Collider2D cartaTop = null;
+    //    int mejorOrden = int.MinValue; //le ponemos el valor mas bajo para un entero (simplemente para no poner -1)  
+
+    //    foreach (var h in hits)
+    //    {
+    //        if (h == null || !h.CompareTag("carta")) continue; //si entre todos los collider que detecta no hay ninguno con tag "carta", entonces dejara padrecollider como null
+    //        if (drag && h.transform == drag) continue; // excluir la que estoy arrastrando
+    //        Debug.Log($"Carta {h.name} bajo carta {dragTransform.name}");
+    //        var sr = h.GetComponent<SpriteRenderer>(); //esto es para tener informacion de su sortingOrder
+    //        int orden = sr ? sr.sortingOrder : 0; //basicamente aqui digo que orden toma el valor de sr.sortingOrder, si no encuentra ningun sprite render, lo coloca como 0
+    //        if (orden >= mejorOrden)
+    //        {
+    //            mejorOrden = orden;
+    //            cartaTop = h; //con esto cada vez que el orden sea mayor al mejorOrden encontrado, guardaremos el collider como si fuera Top.
+    //        }
+    //    }
+
+    //    if (cartaTop) //si existe una carta
+    //    {
+    //        //Debug.Log("carta top existe");
+    //        var padre = cartaTop.transform.parent;
+    //        if (padre)
+    //        {
+    //            var colPadre = padre.GetComponent<Collider2D>();
+    //            if (colPadre && colPadre.CompareTag("padre"))
+    //            {
+    //                return colPadre;
+    //            }
+
+    //        }
+    //    }
+    //    //Debug.Log("Carta top, no existe: {cartaTop.name}");
+    //    return null;
+    //}
+
+    //nuevos para 3d
+    private GameObject TopCartaBajoMouse3D(Ray ray)
     {
-        Collider2D[] hits = Physics2D.OverlapPointAll(mouse);
-        GameObject top = null;
-        int mejorOrden = int.MinValue; //le ponemos el valor mas bajo para un entero (simplemente para no poner -1)  
-
-        foreach (Collider2D h in hits)
-        {
-            if (h == null || !h.CompareTag("carta")) continue; //si entre todos los collider que detecta no hay ninguno con tag "carta", entonces dejara top como null
-            var sr = h.GetComponent<SpriteRenderer>(); //esto es para tener informacion de su sortingOrder
-            int orden = sr ? sr.sortingOrder : 0; //basicamente aqui digo que orden toma el valor de sr.sortingOrder, si no encuentra ningun sprite render, lo coloca como 0
-            if (orden >= mejorOrden)
-            {
-                mejorOrden = orden;
-                top = h.gameObject; //con esto cada vez que el orden sea mayor al mejorOrden encontrado, guardaremos el collider como si fuera Top.
-            }
-        }
-        return top;
-    }
-
-    private Collider2D PadreBajoMouse(Vector3 mouse)
-    {
-        Collider2D[] hits = Physics2D.OverlapPointAll(mouse);
-        Collider2D padreCollider = null;
-        int mejorOrden = int.MinValue; //le ponemos el valor mas bajo para un entero (simplemente para no poner -1)  
-
-        foreach (Collider2D h in hits)
-        {
-            if (h == null || !h.CompareTag("padre")) continue; //si entre todos los collider que detecta no hay ninguno con tag "padre", entonces dejara padrecollider como null
-            var sr = h.GetComponent<SpriteRenderer>(); //esto es para tener informacion de su sortingOrder
-            int orden = sr ? sr.sortingOrder : 0; //basicamente aqui digo que orden toma el valor de sr.sortingOrder, si no encuentra ningun sprite render, lo coloca como 0
-            if (orden >= mejorOrden)
-            {
-                mejorOrden = orden;
-                padreCollider = h; //con esto cada vez que el orden sea mayor al mejorOrden encontrado, guardaremos el collider como si fuera Top.
-            }
-        }
-        return padreCollider;        
-    }
-
-    private Collider2D AnclaCartaBajoMouse(Vector3 mouse, Transform drag)
-    {
-        var hits = Physics2D.OverlapPointAll(mouse);
-        Collider2D cartaTop = null;
-        int mejorOrden = int.MinValue; //le ponemos el valor mas bajo para un entero (simplemente para no poner -1)  
+        var hits = Physics2D.GetRayIntersectionAll(ray, Mathf.Infinity);
+        SpriteRenderer top = null;
+        GameObject go = null;
 
         foreach (var h in hits)
         {
-            if (h == null || !h.CompareTag("carta")) continue; //si entre todos los collider que detecta no hay ninguno con tag "carta", entonces dejara padrecollider como null
-            if (drag && h.transform == drag) continue; // excluir la que estoy arrastrando
-            Debug.Log($"Carta {h.name} bajo carta {dragTransform.name}");
-            var sr = h.GetComponent<SpriteRenderer>(); //esto es para tener informacion de su sortingOrder
-            int orden = sr ? sr.sortingOrder : 0; //basicamente aqui digo que orden toma el valor de sr.sortingOrder, si no encuentra ningun sprite render, lo coloca como 0
-            if (orden >= mejorOrden)
+            if (h.collider == null || !h.collider.CompareTag("carta")) continue; //si entre todos los collider que detecta no hay ninguno con tag "carta", entonces dejara top como null
+            var sr = h.collider.GetComponent<SpriteRenderer>();
+            if (!sr) continue;
+            if (go == null || sr.sortingOrder > top.sortingOrder)
             {
-                mejorOrden = orden;
-                cartaTop = h; //con esto cada vez que el orden sea mayor al mejorOrden encontrado, guardaremos el collider como si fuera Top.
+                top = sr;
+                go = h.collider.gameObject;
+            }
+        }
+        return go;
+    }
+
+    private Collider2D PadreBajoMouse3D(Ray ray)
+    {
+        Debug.Log("Estoy evaluando Padre bajo mouse 3d");
+        var hits = Physics2D.GetRayIntersectionAll(ray, Mathf.Infinity);
+        SpriteRenderer top = null;
+        Collider2D topcol = null;
+
+        foreach (var h in hits)
+        {
+            Debug.Log($"h :{h.collider}");
+            if (h.collider == null || !h.collider.CompareTag("padre")) continue; //si entre todos los collider que detecta no hay ninguno con tag "carta", entonces dejara top como null
+            var sr = h.collider.GetComponent<SpriteRenderer>();
+            if (!sr) continue;
+            if (topcol == null || sr.sortingOrder > top.sortingOrder)
+            {
+                top = sr;
+                topcol = h.collider;
+            }
+        }
+        Debug.Log("Retorno :"+ topcol);
+        return topcol;
+    }
+
+    private bool MouseOnPlane(Ray ray, Plane plane, out Vector3 worldPoint)
+    {
+        worldPoint = Vector3.zero;
+        if(plane.Raycast(ray, out float dist))
+        {
+            worldPoint = ray.GetPoint(dist);
+            return true;
+        }
+        return false;
+    }
+
+    private Collider2D AnclaCartaBajoMouse3D(Ray ray, Transform drag)
+    {
+        var hits = Physics2D.GetRayIntersectionAll(ray, Mathf.Infinity);
+        SpriteRenderer top = null;
+        Collider2D cartaTop = null;
+
+        foreach (var h in hits)
+        {
+            if (h.collider == null || !h.collider.CompareTag("carta")) continue; //si entre todos los collider que detecta no hay ninguno con tag "carta", entonces dejara top como null
+            var sr = h.collider.GetComponent<SpriteRenderer>();
+            if (!sr) continue;
+            if (cartaTop == null || sr.sortingOrder > top.sortingOrder)
+            {
+                top = sr;
+                cartaTop = h.collider;
             }
         }
 
-        if(cartaTop) //si existe una carta
+        if (cartaTop) //si existe una carta
         {
-            //Debug.Log("carta top existe");
             var padre = cartaTop.transform.parent;
             if (padre)
             {
                 var colPadre = padre.GetComponent<Collider2D>();
-                if(colPadre && colPadre.CompareTag("padre"))
+                if (colPadre && colPadre.CompareTag("padre"))
                 {
                     return colPadre;
                 }
-                    
             }
         }
-        //Debug.Log("Carta top, no existe: {cartaTop.name}");
         return null;
     }
+
+    //fin de helpers 3d
 
     private int SiguienteOrden(Transform ancla) //con este metodo podemos ver el ancla que necesitemos revisar
                                                 //y entregamos de vuelta el orden que deberia tener la carta que se quiere poner
